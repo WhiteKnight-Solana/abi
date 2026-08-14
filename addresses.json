@@ -2,7 +2,7 @@
   "_comment": "Canonical on-chain addresses per cluster. A null value is a FILLER: the WhiteKnight program is not deployed on that cluster yet, and the value is published here the moment it is. Everything non-null is live and verified. Consumers must treat null as 'not available on this cluster', never as a default.",
   "clusters": {
     "mainnet": {
-      "whiteknightProgram": null,
+      "whiteknightProgram": "WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS",
       "satrushProgram": "satRushGBRY2vgapeTAkoxz26vL2cYqyPi6CnBj7Tco",
       "usdcMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       "cbbtcMint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
@@ -13,7 +13,7 @@
       "addressLookupTableProgram": "AddressLookupTab1e1111111111111111111111111"
     },
     "localnet": {
-      "whiteknightProgram": "7RMuMpB6pqsoRemhC3FuXpK9Yz3NakyUQWLLJrJWw4PD",
+      "whiteknightProgram": "WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS",
       "satrushProgram": "satRushGBRY2vgapeTAkoxz26vL2cYqyPi6CnBj7Tco",
       "usdcMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       "cbbtcMint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
@@ -24,11 +24,14 @@
       "addressLookupTableProgram": "AddressLookupTab1e1111111111111111111111111"
     }
   },
-  "pending": [
-    "clusters.mainnet.whiteknightProgram"
-  ],
+  "pending": [],
+  "neverDeploy": {
+    "_comment": "Keys that must never appear as a cluster's whiteknightProgram. Pinned as literals, not derived from the IDL: once declare_id! moved to the mainnet key the IDL stopped being a witness for this rule, and a rule that quietly stops testing anything is worse than no rule.",
+    "developmentDeclareId": "7RMuMpB6pqsoRemhC3FuXpK9Yz3NakyUQWLLJrJWw4PD"
+  },
   "rules": {
     "_comment": "Machine-checked by test/addresses.test.mjs.",
-    "mainnetProgramMustDifferFromLocalnet": "The localnet id is the development declare_id and must NEVER be the mainnet deployment key. When mainnet.whiteknightProgram is filled, it must be a different address."
+    "mainnetProgramMustNotBeTheDevelopmentKey": "7RMuMpB6pqsoRemhC3FuXpK9Yz3NakyUQWLLJrJWw4PD was generated on a dev box and its keypair sits in public git history. It is disqualified from every cluster, mainnet above all.",
+    "localnetMatchesDeclareId": "Since the 2026-08-14 mainnet deploy, declare_id! carries the mainnet address and Anchor.toml points BOTH stanzas at it, so localnet and mainnet are deliberately the same id here. The address book follows the IDL rather than asserting they differ."
   }
 }

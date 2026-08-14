@@ -1,7 +1,7 @@
 // GENERATED from idl/whiteknight.json by scripts/build.mjs — do not edit by hand.
 // Regenerate with: node scripts/build.mjs
 export default {
-  "address": "7RMuMpB6pqsoRemhC3FuXpK9Yz3NakyUQWLLJrJWw4PD",
+  "address": "WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS",
   "metadata": {
     "name": "whiteknight",
     "version": "0.1.0",
@@ -2091,6 +2091,12 @@ export default {
           "name": "satrush_program"
         },
         {
+          "name": "satrush_config",
+          "docs": [
+            "2026-08-14 redeploy added this account to `claim_one_btc_reward`."
+          ]
+        },
+        {
           "name": "token_program"
         },
         {
@@ -2354,6 +2360,12 @@ export default {
         },
         {
           "name": "satrush_program"
+        },
+        {
+          "name": "satrush_config",
+          "docs": [
+            "2026-08-14 redeploy added this account to `close_one_btc_ticket`."
+          ]
         }
       ],
       "args": [

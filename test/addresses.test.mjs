@@ -3,9 +3,16 @@
 // A null is a declared filler — the program is not on that cluster yet — and the `pending`
 // list must name every one of them, so "what is still unpublished" is a machine-checked fact
 // rather than a comment. The one rule with teeth: the development declare_id must never appear
-// as the mainnet program id. That key exists in public git history; deploying it is the exact
+// as any cluster's program id. That key exists in public git history; deploying it is the exact
 // mistake docs/mainnet-identity.md exists to prevent, and this test makes the ABI refuse to
 // publish it.
+//
+// That rule used to be written as `mainnet !== idl.address`, which worked only while
+// `declare_id!` still held the dev key. The 2026-08-14 mainnet deploy moved `declare_id!` to
+// the real address, at which point the old form would have started comparing the mainnet id
+// against itself — a test that fails on the correct deploy and passes on the mistake it exists
+// to catch. It is pinned as a LITERAL now (`addresses.json` → `neverDeploy`), so it keeps
+// testing the same fact no matter what the IDL says.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,19 +41,34 @@ test('the pending list names exactly the null entries', () => {
   assert.deepEqual(nulls.sort(), [...pending].sort());
 });
 
-test('localnet carries the development declare_id from the IDL', () => {
+test('localnet carries whatever declare_id the IDL was built from', () => {
+  // Since the mainnet deploy both Anchor.toml stanzas point at the same address, so this is
+  // now "the address book agrees with the artifact", not "localnet is the throwaway key".
   assert.equal(clusters.localnet.whiteknightProgram, idl.address);
 });
 
-test('the mainnet program id is never the development declare_id', () => {
-  const mainnet = clusters.mainnet.whiteknightProgram;
-  if (mainnet === null) return; // still pending — the pending test covers it
-  assert.ok(isAddress(mainnet));
-  assert.notEqual(
-    mainnet,
-    idl.address,
-    'mainnet.whiteknightProgram equals the dev declare_id — that key is in public git history and must never be deployed',
-  );
+test('the development declare_id is never published as any cluster program id', () => {
+  const dev = book.neverDeploy.developmentDeclareId;
+  // Pin the literal itself: if someone edits it to the address they are deploying, the rule
+  // would still "pass" while protecting nothing.
+  assert.equal(dev, '7RMuMpB6pqsoRemhC3FuXpK9Yz3NakyUQWLLJrJWw4PD');
+  for (const [cluster, entries] of Object.entries(clusters)) {
+    if (entries.whiteknightProgram === null) continue;
+    assert.ok(isAddress(entries.whiteknightProgram));
+    assert.notEqual(
+      entries.whiteknightProgram,
+      dev,
+      `clusters.${cluster}.whiteknightProgram is the dev declare_id — that keypair is in public git history and must never be deployed`,
+    );
+  }
+});
+
+test('the published mainnet id is the deployed program', () => {
+  // The one address every consumer resolves. Pinned so a typo in the pin cascade fails here,
+  // in a repo with no network access, rather than at a client that quietly derives every PDA
+  // from a program that does not exist.
+  assert.equal(clusters.mainnet.whiteknightProgram, 'WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS');
+  assert.equal(clusters.mainnet.whiteknightProgram, idl.address, 'the IDL and the address book must describe the same program');
 });
 
 test('third-party addresses agree across clusters', () => {

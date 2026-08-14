@@ -3,13 +3,13 @@ export default {
   "_comment": "Integrity manifest. Every hash is recomputed by test/manifest.test.mjs on every test run; a mismatch means an artifact was edited without rebuilding, which is the staleness this repo exists to prevent.",
   "source": {
     "repo": "whiteknight (private)",
-    "commit": "dc6b4eb29741e2945dd32aec28c8888debd497a1",
+    "commit": "764fd18a8229c4eda597c6d408d7b4d0158e1ac7",
     "toolchain": "anchor 1.1.2",
-    "exported": "2026-08-14"
+    "exported": "2026-08-15"
   },
   "artifacts": {
-    "idl/whiteknight.json": "b28a8041387be8e2255cf75cfbbe81c9554ecd65b812a0c727f4a14d50375b5a",
-    "addresses.json": "a7909d03dcf76aa0fd0ef2b2f5555997f54db85e3a99db8bb8f7338ddd47d5a1",
+    "idl/whiteknight.json": "4ad29bdf25c8c6593d16451acce12661b09a9ecafe23c7909600fd289086472e",
+    "addresses.json": "668fcc1df125a75b73afea6922940087f733bf02e40689dcacdc0471ddf1befe",
     "constants.json": "a6278564d42cc283e6599cbbb67219eb9c844deda7fe87d0206660e11a06d2a2"
   }
 };
