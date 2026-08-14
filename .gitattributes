@@ -1,0 +1,4 @@
+# Every file checks out with LF on every platform. Not a style choice: MANIFEST.json pins the
+# sha256 of each artifact's BYTES, and an autocrlf=true checkout would rewrite those bytes and
+# fail the manifest test on Windows for no real reason.
+* text=auto eol=lf
