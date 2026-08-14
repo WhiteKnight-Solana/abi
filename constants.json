@@ -107,6 +107,10 @@
         { "kind": "pubkey", "name": "authority" },
         { "kind": "u32le", "name": "roundId" }
       ],
+      "publicAutomation": [
+        { "kind": "literal", "value": "public_automation" },
+        { "kind": "pubkey", "name": "authority" }
+      ],
       "epochVaultIteration": [
         { "kind": "literal", "value": "epoch_vault_iteration" },
         { "kind": "u32le", "name": "iterationId" }

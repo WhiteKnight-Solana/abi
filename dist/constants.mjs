@@ -206,6 +206,16 @@ export default {
           "name": "roundId"
         }
       ],
+      "publicAutomation": [
+        {
+          "kind": "literal",
+          "value": "public_automation"
+        },
+        {
+          "kind": "pubkey",
+          "name": "authority"
+        }
+      ],
       "epochVaultIteration": [
         {
           "kind": "literal",
