@@ -1,0 +1,36 @@
+// GENERATED from addresses.json by scripts/build.mjs — do not edit by hand.
+// Regenerate with: node scripts/build.mjs
+export default {
+  "_comment": "Canonical on-chain addresses per cluster. A null value is a FILLER: the WhiteKnight program is not deployed on that cluster yet, and the value is published here the moment it is. Everything non-null is live and verified. Consumers must treat null as 'not available on this cluster', never as a default.",
+  "clusters": {
+    "mainnet": {
+      "whiteknightProgram": null,
+      "satrushProgram": "satRushGBRY2vgapeTAkoxz26vL2cYqyPi6CnBj7Tco",
+      "usdcMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "cbbtcMint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "associatedTokenProgram": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+      "systemProgram": "11111111111111111111111111111111",
+      "computeBudgetProgram": "ComputeBudget111111111111111111111111111111",
+      "addressLookupTableProgram": "AddressLookupTab1e1111111111111111111111111"
+    },
+    "localnet": {
+      "whiteknightProgram": "7RMuMpB6pqsoRemhC3FuXpK9Yz3NakyUQWLLJrJWw4PD",
+      "satrushProgram": "satRushGBRY2vgapeTAkoxz26vL2cYqyPi6CnBj7Tco",
+      "usdcMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "cbbtcMint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "associatedTokenProgram": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+      "systemProgram": "11111111111111111111111111111111",
+      "computeBudgetProgram": "ComputeBudget111111111111111111111111111111",
+      "addressLookupTableProgram": "AddressLookupTab1e1111111111111111111111111"
+    }
+  },
+  "pending": [
+    "clusters.mainnet.whiteknightProgram"
+  ],
+  "rules": {
+    "_comment": "Machine-checked by test/addresses.test.mjs.",
+    "mainnetProgramMustDifferFromLocalnet": "The localnet id is the development declare_id and must NEVER be the mainnet deployment key. When mainnet.whiteknightProgram is filled, it must be a different address."
+  }
+};

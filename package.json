@@ -1,0 +1,40 @@
+{
+  "name": "@whiteknight-solana/abi",
+  "version": "0.1.0",
+  "description": "Canonical WhiteKnight ABI: the program IDL, per-cluster addresses, and byte-exact layout constants. Consume by git commit hash.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./idl": "./dist/idl.mjs",
+    "./addresses": "./dist/addresses.mjs",
+    "./constants": "./dist/constants.mjs",
+    "./manifest": "./dist/manifest.mjs",
+    "./idl.json": "./idl/whiteknight.json",
+    "./addresses.json": "./addresses.json",
+    "./constants.json": "./constants.json",
+    "./manifest.json": "./MANIFEST.json"
+  },
+  "files": [
+    "index.mjs",
+    "dist/",
+    "idl/",
+    "addresses.json",
+    "constants.json",
+    "MANIFEST.json"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "test": "node --test test/",
+    "sync-check": "node scripts/sync-check.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WhiteKnight-Solana/abi.git"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

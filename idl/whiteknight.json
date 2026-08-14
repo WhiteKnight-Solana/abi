@@ -1,0 +1,4574 @@
+{
+  "address": "7RMuMpB6pqsoRemhC3FuXpK9Yz3NakyUQWLLJrJWw4PD",
+  "metadata": {
+    "name": "whiteknight",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "accept_admin",
+      "discriminator": [
+        112,
+        42,
+        45,
+        90,
+        116,
+        181,
+        13,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "pending_admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_shard",
+      "docs": [
+        "Reclaim the rent a dormant shard is sitting on: closes its two ATAs and returns that",
+        "rent to the user. The USDC ATA's rent really is the user's own (`deposit_balance`,",
+        "`payer = authority`); the cbBTC ATA was created inside a Sat Rush claim CPI with the",
+        "shard PDA as payer — i.e. fronted by the crank-funded float — and returning it anyway is",
+        "deliberate policy: it is bounded, one-shot (~0.002 SOL), and not worth a second code",
+        "path. Refuses while the shard still holds anything, in its ATAs or in its Sat Rush",
+        "`Miner`.",
+        "",
+        "**The shard's own SOL float is deliberately NOT swept.** The crank funds it so Sat Rush",
+        "has a rent payer for the ticket accounts it creates; paying it out would move protocol",
+        "money to the user, and since the crank re-funds on its next pass it would do so on a",
+        "loop. `WkShardClosed` therefore deliberately carries no lamport figure — see",
+        "`handle_close_shard`.",
+        "",
+        "Leaves `Manager` and `Deployer` alive on purpose — they are what let the shard keep",
+        "signing, and a 1 BTC ticket cannot be proven absent on chain."
+      ],
+      "discriminator": [
+        18,
+        225,
+        167,
+        168,
+        223,
+        60,
+        73,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "The user, and only the user. This destroys accounts, so unlike the claim paths it is",
+            "not open to a passer-by."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wk_auth",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              },
+              {
+                "kind": "arg",
+                "path": "auth_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wk_auth_usd_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "wk_auth"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usd_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "wk_auth_btc_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "wk_auth"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "btc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "usd_mint"
+        },
+        {
+          "name": "btc_mint"
+        },
+        {
+          "name": "miner"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_deployer",
+      "discriminator": [
+        251,
+        255,
+        245,
+        92,
+        40,
+        127,
+        150,
+        190
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deployer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  100,
+                  101,
+                  112,
+                  108,
+                  111,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "settings",
+          "type": {
+            "defined": {
+              "name": "DeployerSettings"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_manager",
+      "docs": [
+        "`index` lets one wallet hold several independent positions, one per operator it hires.",
+        "Pass 0 unless the user genuinely wants two operators running at once."
+      ],
+      "discriminator": [
+        188,
+        55,
+        132,
+        229,
+        104,
+        187,
+        203,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "docs": [
+            "A PDA of the user's own key plus an index — not a keypair.",
+            "",
+            "evore hands the user a keypair to keep safe; losing it strands the account. The index",
+            "recovers the one thing that keypair bought them: a wallet can hold several independent",
+            "positions, one per operator it hires. Most users only ever use index 0."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "arg",
+                "path": "index"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "deposit_balance",
+      "discriminator": [
+        126,
+        124,
+        133,
+        139,
+        113,
+        62,
+        17,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          },
+          "relations": [
+            "deployer"
+          ]
+        },
+        {
+          "name": "deployer",
+          "docs": [
+            "A deposit is what GRANTS stake budget (`Deployer::stake_allowance`), so the account that",
+            "holds the budget has to be here.",
+            "",
+            "Required, not optional: without it a deposit would be money the position is never",
+            "permitted to stake once `auto_reload` is false, which is a far more confusing failure",
+            "than needing settings saved first. `create_deployer` is already step one of onboarding",
+            "and the account is never closed, so the ordering costs nobody anything."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  100,
+                  101,
+                  112,
+                  108,
+                  111,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wk_auth",
+          "docs": [
+            "only to own ATAs and to sign Sat Rush CPIs."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              },
+              {
+                "kind": "arg",
+                "path": "auth_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usd_mint"
+        },
+        {
+          "name": "authority_usd_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usd_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "wk_auth_usd_ata",
+          "docs": [
+            "Created on first deposit, so the user never has to think about it."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "wk_auth"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usd_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_id",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_config",
+      "discriminator": [
+        23,
+        235,
+        115,
+        232,
+        168,
+        96,
+        1,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program",
+          "docs": [
+            "This program's own program account. `init_config` is first-come-first-served on a",
+            "singleton PDA that can never be closed — without a gate, whoever landed it first in the",
+            "deploy-to-init window owned the config forever, and the only recovery was abandoning the",
+            "program id. The gate: the signer must be the program's UPGRADE AUTHORITY, proven by",
+            "walking program → ProgramData → upgrade_authority_address in `require_upgrade_authority`."
+          ]
+        },
+        {
+          "name": "program_data",
+          "docs": [
+            "the caller; the handler requires it to match the embedded address."
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_collector",
+          "type": "pubkey"
+        },
+        {
+          "name": "deploy_authority",
+          "type": "pubkey"
+        },
+        {
+          "name": "satrush_program",
+          "type": "pubkey"
+        },
+        {
+          "name": "usd_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "btc_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_flags",
+      "discriminator": [
+        199,
+        54,
+        111,
+        124,
+        87,
+        47,
+        217,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "mask",
+          "type": "u64"
+        },
+        {
+          "name": "value",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_key",
+      "discriminator": [
+        1,
+        156,
+        237,
+        99,
+        117,
+        15,
+        249,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "which",
+          "type": {
+            "defined": {
+              "name": "ConfigKey"
+            }
+          }
+        },
+        {
+          "name": "key",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_param",
+      "discriminator": [
+        116,
+        174,
+        75,
+        208,
+        210,
+        13,
+        144,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u8"
+        },
+        {
+          "name": "value",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "transfer_admin",
+      "discriminator": [
+        42,
+        242,
+        66,
+        106,
+        228,
+        10,
+        111,
+        156
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "transfer_manager",
+      "discriminator": [
+        183,
+        122,
+        218,
+        241,
+        4,
+        151,
+        156,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "manager",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "update_deployer",
+      "discriminator": [
+        122,
+        38,
+        170,
+        78,
+        114,
+        249,
+        214,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          },
+          "relations": [
+            "deployer"
+          ]
+        },
+        {
+          "name": "deployer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  100,
+                  101,
+                  112,
+                  108,
+                  111,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "settings",
+          "type": {
+            "defined": {
+              "name": "DeployerSettings"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_balance",
+      "docs": [
+        "USDC only, mint checked against config. `amount = 0` withdraws everything."
+      ],
+      "discriminator": [
+        140,
+        79,
+        65,
+        53,
+        68,
+        73,
+        241,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wk_auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              },
+              {
+                "kind": "arg",
+                "path": "auth_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "wk_auth_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "wk_auth"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "authority_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_id",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_tokens",
+      "docs": [
+        "Any mint — this is how cbBTC winnings leave. `amount = 0` withdraws everything."
+      ],
+      "discriminator": [
+        2,
+        4,
+        225,
+        61,
+        19,
+        182,
+        106,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wk_auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              },
+              {
+                "kind": "arg",
+                "path": "auth_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "wk_auth_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "wk_auth"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "authority_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_id",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "wk_buy_epoch_tickets_batch",
+      "docs": [
+        "Fill each shard's epoch position up to the saturation knee. Run this BEFORE the 1 BTC",
+        "batch — the split rule is stateless and reads what has already been bought."
+      ],
+      "discriminator": [
+        251,
+        251,
+        80,
+        238,
+        67,
+        123,
+        252,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Any operator's crank. De-gated globally, but every user in the batch is checked",
+            "against their own `deployer.deploy_authority` below — this instruction SPENDS the",
+            "user's hashrate, so it cannot be left open the way the claim paths are."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "satrush_config"
+        },
+        {
+          "name": "epoch_vault"
+        },
+        {
+          "name": "epoch_vault_iteration",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_buy_one_btc_tickets_batch",
+      "docs": [
+        "Sweep whatever hashrate is left into the 1 BTC vault, which cannot dilute us.",
+        "Signature-bound: each user needs a fresh ticket keypair that signs."
+      ],
+      "discriminator": [
+        35,
+        86,
+        75,
+        191,
+        113,
+        170,
+        57,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Any operator's crank. De-gated globally, but every user in the batch is checked",
+            "against their own `deployer.deploy_authority` below — this instruction SPENDS the",
+            "user's hashrate, so it cannot be left open the way the claim paths are."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "one_btc_vault"
+        },
+        {
+          "name": "one_btc_vault_iteration",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_claim_epoch_rewards_batch",
+      "docs": [
+        "Collect epoch prizes. Win detection reads `winners[21]` on chain; a non-winner in the",
+        "batch is skipped rather than reverting the transaction."
+      ],
+      "discriminator": [
+        236,
+        240,
+        252,
+        150,
+        172,
+        222,
+        66,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Anyone may sign this. It only ever moves value TOWARD the user, so leaving it open is",
+            "a feature: a stalled or vanished operator can never strand someone's funds, and any",
+            "passer-by can help a user get paid."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usd_mint"
+        },
+        {
+          "name": "btc_mint"
+        },
+        {
+          "name": "epoch_vault",
+          "writable": true
+        },
+        {
+          "name": "epoch_vault_iteration",
+          "writable": true
+        },
+        {
+          "name": "epoch_vault_usd_ata",
+          "writable": true
+        },
+        {
+          "name": "epoch_vault_btc_ata",
+          "writable": true
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "iteration_id",
+          "type": "u32"
+        },
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_claim_one_btc_rewards_batch",
+      "docs": [
+        "Collect the 1 BTC prize. One ticket account holds a block, so the win test is a range",
+        "check against `winningTicket`, not an equality."
+      ],
+      "discriminator": [
+        58,
+        248,
+        210,
+        124,
+        193,
+        243,
+        76,
+        143
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Anyone may sign this. It only ever moves value TOWARD the user, so leaving it open is",
+            "a feature: a stalled or vanished operator can never strand someone's funds, and any",
+            "passer-by can help a user get paid."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "btc_mint"
+        },
+        {
+          "name": "one_btc_vault",
+          "writable": true
+        },
+        {
+          "name": "one_btc_vault_iteration",
+          "writable": true
+        },
+        {
+          "name": "one_btc_vault_btc_ata",
+          "writable": true
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "iteration_id",
+          "type": "u32"
+        },
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_claim_sats_batch",
+      "docs": [
+        "Burn sats-vault shares to release locked hashrate, and take the cbBTC cash-back with it.",
+        "",
+        "**How much to release is config, not an argument.** It reads",
+        "`param::CLAIM_SATS_TICKETS`, seeded at 0 = release everything. It was once a",
+        "caller-supplied `tickets_wanted`; nothing in production ever set it to anything but 0, so",
+        "it was a knob any signer could turn on a money path for no benefit. See that param for why",
+        "0 is the right value and not merely the convenient one."
+      ],
+      "discriminator": [
+        144,
+        164,
+        159,
+        50,
+        210,
+        36,
+        181,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Anyone may sign this. It only ever moves value TOWARD the user, so leaving it open is",
+            "a feature: a stalled or vanished operator can never strand someone's funds, and any",
+            "passer-by can help a user get paid."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "btc_mint"
+        },
+        {
+          "name": "satrush_config"
+        },
+        {
+          "name": "sats_vault",
+          "writable": true
+        },
+        {
+          "name": "sats_vault_btc_ata",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_claim_usd_batch",
+      "docs": [
+        "Pull USDC winnings back into each shard, where the next deploy spends them.",
+        "",
+        "Runs for everyone owed something, UNCONDITIONALLY — `auto_reload` is deliberately not",
+        "consulted here. Claiming and staking are separate decisions: money the protocol owes a",
+        "user must never be left sitting in Sat Rush, whatever they asked us to do with it",
+        "afterwards. The flag is enforced one step later, in `plan_deploy`, against",
+        "`Deployer::stake_allowance`."
+      ],
+      "discriminator": [
+        135,
+        113,
+        243,
+        35,
+        154,
+        215,
+        147,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Anyone may sign this. It only ever moves value TOWARD the user, so leaving it open is",
+            "a feature: a stalled or vanished operator can never strand someone's funds, and any",
+            "passer-by can help a user get paid."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usd_mint"
+        },
+        {
+          "name": "satrush_config"
+        },
+        {
+          "name": "board"
+        },
+        {
+          "name": "board_usd_ata",
+          "writable": true
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_close_one_btc_tickets_batch",
+      "docs": [
+        "Reclaim the rent sitting in spent 1 BTC tickets. Sat Rush never does this for us — the",
+        "ticket owner must, and ours are PDAs only this program can sign for.",
+        "",
+        "Refuses to run while the iteration is still `Open`, because a ticket closed before the",
+        "draw is an entry thrown away."
+      ],
+      "discriminator": [
+        171,
+        144,
+        100,
+        91,
+        200,
+        130,
+        140,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Anyone may sign. Rent flows to the shard that paid it, never to the caller, so an open",
+            "door costs nothing and means a vanished operator cannot strand a user's rent."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "one_btc_vault_iteration"
+        },
+        {
+          "name": "satrush_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "iteration_id",
+          "type": "u32"
+        },
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_deploy_batch",
+      "docs": [
+        "N users per call. Charges our fee, derives each shard's tiles on chain, and CPIs",
+        "Sat Rush's `deploy_public`. Skips users who cannot pay; never reverts because of one."
+      ],
+      "discriminator": [
+        225,
+        157,
+        185,
+        206,
+        179,
+        98,
+        77,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "**Any** operator's crank. Pays transaction fees; cannot choose tiles or amounts, and",
+            "cannot touch a user who did not name it.",
+            "",
+            "Deliberately NOT constrained to `config.deploy_authority` — that global gate is what",
+            "made Whiteknight single-operator. The real security boundary is per user, below:",
+            "`deployer.deploy_authority == crank`."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usd_mint"
+        },
+        {
+          "name": "operator_usd_ata",
+          "docs": [
+            "Where the OPERATOR's fee lands — their own token account.",
+            "",
+            "Safe to share across the batch: every user in it must already satisfy",
+            "`deployer.deploy_authority == crank`, so they all have the same operator. Constrained",
+            "to the signer, so a crank can only ever pay itself."
+          ],
+          "writable": true
+        },
+        {
+          "name": "platform_usd_ata",
+          "docs": [
+            "Where OUR platform cut lands. Checked against `config.fee_collector`, so no operator",
+            "can redirect it — this is the account that makes the platform self-enforcing rather",
+            "than a monthly invoice."
+          ],
+          "writable": true
+        },
+        {
+          "name": "satrush_config"
+        },
+        {
+          "name": "board",
+          "docs": [
+            "for the `min_strike_pot_usd` gate, and a gate that skips everyone never reaches the CPI",
+            "that would have caught a fake — so deriving it here is what stops a crank holding gated",
+            "users out of rounds by passing a board with a thin pot."
+          ],
+          "writable": true
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "previous_round",
+          "docs": [
+            "The PREVIOUS round, read-only, and the reason the strike gate needs no oracle: Sat Rush",
+            "swapped part of its deploys from USDC into cbBTC through Jupiter and recorded both sides",
+            "here, which is a market rate.",
+            "",
+            "Derived as `round_id - 1` rather than passed as an argument, so the crank has no say in",
+            "which round prices the pot. Always supplied, only READ when somebody in the batch has",
+            "the gate armed; costs one account lock and leaves the batch at nine users."
+          ]
+        },
+        {
+          "name": "board_usd_ata",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u32"
+        },
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_settle_batch",
+      "docs": [
+        "Settle our own deployments — the ONLY way our shard PDAs can be credited hashrate.",
+        "",
+        "**This instruction is open to any signer** (`WkSettleBatch::crank` carries no operator",
+        "check), because it only ever moves value toward the user.",
+        "",
+        "What is NOT permissionless is Sat Rush's inner `settle_deploy_public`, which rejects any",
+        "signer that is not the deployment's own authority — corrected from the original plan",
+        "note, which had the crank calling them directly. Ours is a PDA, so the settle must route",
+        "through this program; but anyone at all may be the one to ask for it."
+      ],
+      "discriminator": [
+        230,
+        203,
+        96,
+        202,
+        99,
+        98,
+        189,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "Anyone may sign this. It only ever moves value TOWARD the user, so leaving it open is",
+            "a feature: a stalled or vanished operator can never strand someone's funds, and any",
+            "passer-by can help a user get paid."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usd_mint"
+        },
+        {
+          "name": "btc_mint"
+        },
+        {
+          "name": "rent_recipient",
+          "docs": [
+            "Where the closed deployment's rent goes. Must match the `SETTLE_RENT_TO_US` flag, so a",
+            "compromised crank cannot quietly redirect the refunds to itself when policy says the",
+            "user keeps them, or vice versa."
+          ],
+          "writable": true
+        },
+        {
+          "name": "satrush_config"
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "board"
+        },
+        {
+          "name": "sats_vault",
+          "writable": true
+        },
+        {
+          "name": "board_usd_ata",
+          "writable": true
+        },
+        {
+          "name": "board_btc_ata",
+          "writable": true
+        },
+        {
+          "name": "sats_vault_btc_ata",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "round_id",
+          "type": "u32"
+        },
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Deployer",
+      "discriminator": [
+        164,
+        224,
+        249,
+        5,
+        170,
+        209,
+        254,
+        26
+      ]
+    },
+    {
+      "name": "Manager",
+      "discriminator": [
+        221,
+        78,
+        171,
+        233,
+        213,
+        142,
+        113,
+        56
+      ]
+    },
+    {
+      "name": "WkConfig",
+      "discriminator": [
+        52,
+        214,
+        183,
+        212,
+        69,
+        206,
+        113,
+        0
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "WkAdminAccepted",
+      "discriminator": [
+        126,
+        205,
+        197,
+        59,
+        75,
+        67,
+        244,
+        175
+      ]
+    },
+    {
+      "name": "WkAdminTransferStarted",
+      "discriminator": [
+        163,
+        179,
+        112,
+        151,
+        196,
+        113,
+        233,
+        254
+      ]
+    },
+    {
+      "name": "WkClaimed",
+      "discriminator": [
+        62,
+        21,
+        66,
+        118,
+        182,
+        133,
+        61,
+        105
+      ]
+    },
+    {
+      "name": "WkCollectSkipped",
+      "discriminator": [
+        116,
+        76,
+        7,
+        111,
+        225,
+        83,
+        250,
+        166
+      ]
+    },
+    {
+      "name": "WkConfigInitialized",
+      "discriminator": [
+        14,
+        25,
+        89,
+        111,
+        190,
+        207,
+        142,
+        47
+      ]
+    },
+    {
+      "name": "WkDeploySkipped",
+      "discriminator": [
+        226,
+        92,
+        147,
+        82,
+        226,
+        108,
+        138,
+        253
+      ]
+    },
+    {
+      "name": "WkDeployed",
+      "discriminator": [
+        239,
+        135,
+        228,
+        145,
+        172,
+        211,
+        155,
+        122
+      ]
+    },
+    {
+      "name": "WkDeployerConfigured",
+      "discriminator": [
+        89,
+        151,
+        62,
+        193,
+        253,
+        241,
+        138,
+        154
+      ]
+    },
+    {
+      "name": "WkDeposited",
+      "discriminator": [
+        18,
+        154,
+        202,
+        42,
+        0,
+        218,
+        211,
+        11
+      ]
+    },
+    {
+      "name": "WkFlagsSet",
+      "discriminator": [
+        199,
+        176,
+        176,
+        204,
+        116,
+        33,
+        84,
+        34
+      ]
+    },
+    {
+      "name": "WkKeySet",
+      "discriminator": [
+        125,
+        162,
+        193,
+        153,
+        66,
+        167,
+        38,
+        196
+      ]
+    },
+    {
+      "name": "WkManagerCreated",
+      "discriminator": [
+        211,
+        207,
+        125,
+        239,
+        224,
+        143,
+        221,
+        50
+      ]
+    },
+    {
+      "name": "WkManagerTransferred",
+      "discriminator": [
+        207,
+        165,
+        16,
+        110,
+        12,
+        215,
+        162,
+        146
+      ]
+    },
+    {
+      "name": "WkParamSet",
+      "discriminator": [
+        234,
+        143,
+        247,
+        252,
+        216,
+        60,
+        33,
+        174
+      ]
+    },
+    {
+      "name": "WkRewardClaimed",
+      "discriminator": [
+        22,
+        128,
+        191,
+        24,
+        123,
+        234,
+        81,
+        190
+      ]
+    },
+    {
+      "name": "WkSettled",
+      "discriminator": [
+        80,
+        107,
+        120,
+        252,
+        194,
+        139,
+        145,
+        187
+      ]
+    },
+    {
+      "name": "WkShardClosed",
+      "discriminator": [
+        17,
+        149,
+        42,
+        154,
+        170,
+        15,
+        137,
+        206
+      ]
+    },
+    {
+      "name": "WkTicketClosed",
+      "discriminator": [
+        71,
+        111,
+        179,
+        171,
+        31,
+        61,
+        201,
+        158
+      ]
+    },
+    {
+      "name": "WkTicketsBought",
+      "discriminator": [
+        77,
+        238,
+        80,
+        187,
+        199,
+        216,
+        37,
+        142
+      ]
+    },
+    {
+      "name": "WkTicketsSkipped",
+      "discriminator": [
+        64,
+        100,
+        196,
+        159,
+        49,
+        157,
+        175,
+        228
+      ]
+    },
+    {
+      "name": "WkWithdrawn",
+      "discriminator": [
+        128,
+        184,
+        50,
+        152,
+        24,
+        90,
+        243,
+        218
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotAdmin",
+      "msg": "signer is not the config admin"
+    },
+    {
+      "code": 6001,
+      "name": "NotPendingAdmin",
+      "msg": "signer is not the pending admin"
+    },
+    {
+      "code": 6002,
+      "name": "ParamOutOfRange",
+      "msg": "param index out of range"
+    },
+    {
+      "code": 6003,
+      "name": "BadPda",
+      "msg": "account does not match the expected PDA"
+    },
+    {
+      "code": 6004,
+      "name": "BadProgram",
+      "msg": "provided program account is not the expected program"
+    },
+    {
+      "code": 6005,
+      "name": "BadAccountSize",
+      "msg": "Sat Rush account has an unexpected size - layout may have changed; halting"
+    },
+    {
+      "code": 6006,
+      "name": "DeployPaused",
+      "msg": "deploys are paused"
+    },
+    {
+      "code": 6007,
+      "name": "BadTileCount",
+      "msg": "tile count is outside the configured range"
+    },
+    {
+      "code": 6008,
+      "name": "BelowMinDeploy",
+      "msg": "deploy amount is below the configured minimum"
+    },
+    {
+      "code": 6009,
+      "name": "ExceedsMaxPerTile",
+      "msg": "per-tile amount exceeds max_per_tile"
+    },
+    {
+      "code": 6010,
+      "name": "AboveMaxDeploy",
+      "msg": "deploy amount is above the configured maximum"
+    },
+    {
+      "code": 6011,
+      "name": "BadSetting",
+      "msg": "setting is outside its permitted range"
+    },
+    {
+      "code": 6012,
+      "name": "NotManagerAuthority",
+      "msg": "signer is not the manager authority"
+    },
+    {
+      "code": 6013,
+      "name": "OnboardingClosed",
+      "msg": "onboarding is closed"
+    },
+    {
+      "code": 6014,
+      "name": "BadMint",
+      "msg": "mint does not match the configured mint"
+    },
+    {
+      "code": 6015,
+      "name": "ZeroAmount",
+      "msg": "amount must be greater than zero"
+    },
+    {
+      "code": 6016,
+      "name": "InsufficientBalance",
+      "msg": "insufficient token balance"
+    },
+    {
+      "code": 6017,
+      "name": "NotDeployAuthority",
+      "msg": "signer is not the operator this user hired (deployer.deploy_authority)"
+    },
+    {
+      "code": 6018,
+      "name": "BadFeeCollector",
+      "msg": "fee collector token account does not match config"
+    },
+    {
+      "code": 6019,
+      "name": "EmptyBatch",
+      "msg": "batch is empty"
+    },
+    {
+      "code": 6020,
+      "name": "BatchTooLarge",
+      "msg": "batch exceeds max_batch_size_deploy"
+    },
+    {
+      "code": 6021,
+      "name": "BadRemainingAccounts",
+      "msg": "remaining_accounts length does not match the batch size"
+    },
+    {
+      "code": 6022,
+      "name": "TicketNotSigner",
+      "msg": "1 BTC ticket account must sign the transaction"
+    },
+    {
+      "code": 6023,
+      "name": "TicketNotFresh",
+      "msg": "1 BTC ticket account must be freshly generated and empty"
+    },
+    {
+      "code": 6024,
+      "name": "IterationNotOpen",
+      "msg": "vault iteration is not open"
+    },
+    {
+      "code": 6025,
+      "name": "FeeAboveCeiling",
+      "msg": "operator fee exceeds the ceiling this user agreed to"
+    },
+    {
+      "code": 6026,
+      "name": "ShardHoldsUsd",
+      "msg": "shard still holds USDC — withdraw it before closing"
+    },
+    {
+      "code": 6027,
+      "name": "ShardHoldsBtc",
+      "msg": "shard still holds cbBTC — withdraw it before closing"
+    },
+    {
+      "code": 6028,
+      "name": "ShardOwedInSatrush",
+      "msg": "shard still has value inside Sat Rush — claim it before closing"
+    },
+    {
+      "code": 6029,
+      "name": "AboveShardCeiling",
+      "msg": "wallet count exceeds the ceiling this user agreed to"
+    },
+    {
+      "code": 6030,
+      "name": "IterationGone",
+      "msg": "that vault iteration no longer exists — its ticket rent is unreclaimable"
+    },
+    {
+      "code": 6031,
+      "name": "BadStrikeRange",
+      "msg": "the Sat Strike range is inverted — its minimum is above its maximum"
+    },
+    {
+      "code": 6032,
+      "name": "ZeroAddress",
+      "msg": "address must not be the default (all-zero) pubkey"
+    },
+    {
+      "code": 6033,
+      "name": "NotUpgradeAuthority",
+      "msg": "init_config must be signed by the program's upgrade authority"
+    }
+  ],
+  "types": [
+    {
+      "name": "ConfigKey",
+      "docs": [
+        "Which named pubkey `SetKey` targets."
+      ],
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "FeeCollector"
+          },
+          {
+            "name": "DeployAuthority"
+          },
+          {
+            "name": "SatrushProgram"
+          },
+          {
+            "name": "UsdMint"
+          },
+          {
+            "name": "BtcMint"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Deployer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "deploy_authority",
+            "docs": [
+              "**The operator this user has hired.** Set by the user, changeable by the user at any",
+              "time without moving funds or losing streak. Only this key may deploy for them."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bps_fee",
+            "docs": [
+              "What the operator actually charges. They set this themselves, and it is rejected at",
+              "deploy time if it exceeds the ceiling below."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "flat_fee",
+            "type": "u64"
+          },
+          {
+            "name": "shard_count",
+            "docs": [
+              "How many wallets the bet is actually split across right now. Operator-writable, but",
+              "only within `max_shards`. Each wallet deploys `per_round_amount / shard_count`."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "expected_bps_fee",
+            "type": "u64"
+          },
+          {
+            "name": "expected_flat_fee",
+            "type": "u64"
+          },
+          {
+            "name": "max_shards",
+            "docs": [
+              "**The most wallets this user consents to being split across.** The operator picks the",
+              "actual `shard_count` above and may never exceed this - the same shape as the fee",
+              "ceilings, and for the same reason: more wallets cost the user more flat fee",
+              "(`param::PLATFORM_FLAT_FEE`, charged per wallet per round), so the ceiling is how they",
+              "bound that. 0 is read as 1."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "per_round_amount",
+            "docs": [
+              "**The TOTAL staked per round, across every wallet.** Each wallet deploys",
+              "`per_round_amount / shard_count`, computed on chain - so the amount a user asks for is",
+              "the amount they spend, whatever the wallet count, and no funding change can ever turn",
+              "into an overspend."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tile_count",
+            "docs": [
+              "The ONLY strategy choice: 5 | 9 | 21."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "run_rounds",
+            "docs": [
+              "**How many rounds to play, counted from the first one actually played.** 0 = run until",
+              "the funds or the stop-level end it. Measured against `rounds_played` below.",
+              "",
+              "Renamed from `run_until_round`, which held an ABSOLUTE board round id and was labelled",
+              "in the UI as a count. The board is past #10,000, so a user asking for \"100 rounds\" wrote",
+              "100, the check `round_id > 100` was true immediately, and they were skipped forever",
+              "without ever deploying once. The rename is the fix's safety net: `encodeIx` throws on a",
+              "missing struct field, so any client still sending the old name fails loudly instead of",
+              "writing a number that now means something else."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "when_funds_low",
+            "type": "u8"
+          },
+          {
+            "name": "max_per_tile",
+            "type": "u64"
+          },
+          {
+            "name": "min_bet",
+            "type": "u64"
+          },
+          {
+            "name": "stop_level",
+            "type": "u64"
+          },
+          {
+            "name": "auto_reload",
+            "docs": [
+              "**true** (the default): winnings that come back land in the shard's ATA and are staked",
+              "again next round, so the position recycles until the house's cut has consumed it.",
+              "",
+              "**false**: winnings are still CLAIMED - `claim_usd` runs for everyone, always, and money",
+              "owed must never be left sitting in Sat Rush - but they are not staked. The position",
+              "spends what was deposited and then stops, and everything it won is withdrawable.",
+              "",
+              "Enforced by `stake_allowance` below, not by skipping the claim. Claiming and staking are",
+              "separate decisions, and only the second one is the user's preference here."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "min_strike_pot_usd",
+            "docs": [
+              "**The bottom of the Sat Strike range: mine only once the pot is worth at least this**,",
+              "in USDC micros. 0 means \"no bottom\".",
+              "",
+              "Paired with `max_strike_pot_usd` below, the two form a RANGE, and each end is independent:",
+              "",
+              "```text",
+              "min 0  max 0    no gate at all — mine every round. THE DEFAULT.",
+              "min x  max 0    mine once the pot reaches x, and from then on",
+              "min 0  max y    mine while the pot is still under y, then stop",
+              "min x  max y    mine only while x <= pot <= y   (both ends inclusive)",
+              "```",
+              "",
+              "Inclusive at both ends because a user typing a number means \"at this value, yes\" — the",
+              "UI says \"at least\" and \"at most\", and an exclusive test would make both of those lie.",
+              "",
+              "The pot is two currencies and nothing on chain publishes a BTC price, so the sats leg is",
+              "valued using Sat Rush's OWN most recent swap — `swap_round_stake` converts USDC to cbBTC",
+              "through Jupiter every round and records both sides on the previous `Round`. That ratio is",
+              "a market rate: measured across ten consecutive rounds it held to 0.21%, and it agreed",
+              "with an independent swap transaction to 0.24%. See `satrush::strike_pot_usd`.",
+              "",
+              "Both the `Board` and the reference round are DERIVED by `wk_deploy_batch`, never trusted,",
+              "so an operator cannot fake a fat pot to open somebody's gate or a thin one to hold them",
+              "out of rounds they asked to be in.",
+              "",
+              "**This costs streak, and the cost is not small.** Sitting out a round resets the streak",
+              "multiplier to 1, and rebuilding it takes ~100 rounds; the strike leg is worth about",
+              "+/-0.5% of a deploy. On expected value a gated position loses to an ungated one. It is",
+              "here because it is the user's money and some people are playing for the jackpot rather",
+              "than the grind, but the UI has to say the streak part out loud or the setting is a trap."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_strike_pot_usd",
+            "docs": [
+              "**The top of the Sat Strike range: stop mining once the pot is worth more than this**,",
+              "in USDC micros. 0 (the default) means \"no top\" — see `min_strike_pot_usd` for the table.",
+              "",
+              "A ceiling reads backwards at first, since the pot only grows and a bigger jackpot is",
+              "strictly better for whoever is on the winning tile when it fires. The reason it is a real",
+              "strategy rather than a confusion is **crowding**: a fat pot pulls in more miners, and more",
+              "miners shrink a winner's pro-rata share of both the round pot and the strike itself. So",
+              "\"get out before the crowd arrives\" is coherent, and it is the sentence the UI has to say —",
+              "a user who sets a ceiling for any other reason is paying streak for nothing.",
+              "",
+              "Enforced exactly like the floor: valued from Sat Rush's own last swap, both accounts",
+              "derived, and an unvaluable pot is `StrikePotUnknown` rather than a silent pass or block."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_round",
+            "docs": [
+              "The round `staked_in_round` refers to. A different `round_id` resets the budget."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "staked_in_round",
+            "docs": [
+              "Staked so far this round, across every wallet."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rounds_played",
+            "docs": [
+              "Rounds this position has actually DEPLOYED in - what `run_rounds` is measured against.",
+              "",
+              "**Rounds played, not rounds elapsed, and that distinction is the point.** Counting board",
+              "rounds would mean an operator outage silently spends the user's run: thirty minutes down",
+              "is roughly twenty-six rounds they paid for and never got. This counter only moves when a",
+              "deploy actually lands, so our downtime costs them time and never rounds.",
+              "",
+              "Incremented once per ROUND, not once per wallet - the `last_round != round_id` test is",
+              "what distinguishes \"first wallet of a new round\" from \"the other eight\", and it is the",
+              "same test `staked_in_round` already relies on.",
+              "",
+              "Reset by `update_deployer` when the user changes `run_rounds`, and when a finished run",
+              "is re-saved. Both are needed: without the second, someone who ran their 100 rounds and",
+              "asked for 100 more would save the identical number, nothing would change, and they would",
+              "sit finished forever."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "stake_allowance",
+            "docs": [
+              "The lifetime stake budget - what makes `auto_reload = false` mean anything.",
+              "",
+              "A shard's USDC ATA is its balance; there is no ledger, so deposited principal and",
+              "claimed winnings are the same fungible tokens in the same account and CANNOT be told",
+              "apart by looking. Without a counter, \"do not re-bet my winnings\" is unimplementable -",
+              "which is why the flag sat unread. This is that counter, and it is the whole mechanism:",
+              "",
+              "```text",
+              "deposit_balance   +=  amount deposited",
+              "wk_deploy_batch   -=  amount staked     (saturating; always, whatever the flag says)",
+              "auto_reload=false ->  plan_deploy refuses to stake more than what is left",
+              "```",
+              "",
+              "The guarantee it buys, stated exactly: **with `auto_reload` false, the lifetime total",
+              "staked never exceeds the lifetime total DEPOSITED.** Since every dollar beyond your",
+              "deposits is by definition a winning, that is \"your winnings are never re-bet\".",
+              "",
+              "Read the guarantee literally. Withdrawing does NOT credit the counter back,",
+              "deliberately: the withdraw path stays exactly as it is, with no new accounts and no new",
+              "way to fail, because a blocked exit is a far worse outcome than a loose budget. So",
+              "depositing $10k, withdrawing it unstaked, and depositing it again really does authorise",
+              "$20k of staking - you asked to stake $10k twice. The invariant holds; it is denominated",
+              "in deposits.",
+              "",
+              "Maintained even while `auto_reload` is true, so that flipping the switch off mid-run is",
+              "safe rather than generous: a position that has already recycled its principal has no",
+              "budget left and stops, instead of being handed a fresh one out of its winnings."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "btc_share_bps",
+            "docs": [
+              "**The user's fixed share of every ticket buy routed to the 1 BTC draw, in bps.**",
+              "0 (the default) = the pure overflow logic — epoch to the knee, remainder to 1 BTC —",
+              "byte-for-byte as before this field existed. Set, it is a GUARANTEE TO THE JACKPOT and",
+              "never a guarantee to the epoch leg: the share comes off the top first, the remainder",
+              "flows through the normal knee-capped epoch logic, and epoch overflow still spills to",
+              "1 BTC — so effective jackpot share is >= what was asked, and no mode exists that forces",
+              "buying epoch tickets past the knee (those are provably worthless: one prize per wallet,",
+              "the winner's whole block leaves the urn). 10_000 = a per-user all-jackpot switch.",
+              "",
+              "Why a user would set it: the epoch knee is a per-wallet toll (see `plan_tickets`), and",
+              "below ~$3,700 of deploys per epoch a wallet never spills over — this field is the ONLY",
+              "way a small player holds jackpot entries at all. USER-owned: it rides the user branch of",
+              "`update_deployer` like every other money preference; an operator can never redirect it.",
+              "",
+              "**The first carve from the launch reserve.** Placed here — after `bump`, in front of",
+              "what remains of `reserved` — because that IS the carve rule, exercised once while it is",
+              "still cheap: `LEN` did not move, no filter changed, every earlier offset held."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "epoch_units_bought",
+            "docs": [
+              "Lifetime hashrate UNITS this position has spent on epoch tickets. Together with",
+              "`btc_units_bought` below, this is what makes the jackpot ratio a real guarantee instead",
+              "of a per-buy rounding accident: the epoch leg is bounded by",
+              "`(1 - r) x (epoch + btc + available) - epoch`, which (a) floors to zero the moment the",
+              "epoch side has its full share — so a missed 1 BTC sweep cannot erode the reservation on",
+              "the next pass — and (b) lets 1-ticket dribble buys ACCUMULATE toward the share instead",
+              "of `floor(1 x r)` zeroing it forever, which is how the first implementation quietly",
+              "delivered 0% to exactly the small users the feature exists for.",
+              "",
+              "Lifetime rather than per-iteration on purpose: no iteration id to track, no reset",
+              "races. A user who changes `btc_share_bps` gets the new share applied to FUTURE flow —",
+              "implemented, not just asserted: `apply()` zeroes both counters on any ratio change",
+              "(including to and from 0), because carrying the old ledger into a new ratio would",
+              "re-target the entire lifetime at it. Maintained by the two ticket handlers, only for",
+              "users with a nonzero ratio; ratio-0 positions never pay the serialization cost."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_units_bought",
+            "docs": [
+              "Lifetime hashrate units spent on 1 BTC tickets — the other half of the flow ledger."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "**Post-mainnet expansion room, and the reversal of an earlier decision.** The previous",
+              "stance — no spare bytes, rent is forever — was argued explicitly from \"nothing is",
+              "deployed, so there is nothing to migrate\". Deploying flips that argument on its head:",
+              "after launch, adding ANY user setting without this block changes `LEN`, and `LEN` is the",
+              "crank's `getProgramAccounts` `dataSize` filter — every existing user would vanish from",
+              "discovery until a migration touched every live account. With the block, a new field is a",
+              "carve-out from its front: `LEN` never moves, the filter never breaks, old accounts keep",
+              "decoding (their carved bytes read as zero, which every field here treats as \"unset\").",
+              "",
+              "256 bytes costs each user ~0.0018 SOL (~$0.13 at $75) of rent, once. Two settings were",
+              "added in the week before launch alone (the strike range) — that is the growth rate this",
+              "insures against."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                238
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DeployerSettings",
+      "docs": [
+        "Everything set when a position is created, in one struct so `create` and `update` cannot",
+        "drift apart.",
+        "",
+        "Note this carries BOTH the operator's fee and the user's ceiling. At creation the user",
+        "signs for all of it — a frontend pre-fills the fee with its operator's published rate, and",
+        "the user is consenting to both the rate and the cap in one action. Afterwards the two are",
+        "controlled by different keys (see `handle_update_deployer`)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "deploy_authority",
+            "docs": [
+              "Which operator to hire. Any key may be an operator; there is no registry."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bps_fee",
+            "docs": [
+              "What that operator charges. Must not exceed the ceiling below."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "flat_fee",
+            "type": "u64"
+          },
+          {
+            "name": "expected_bps_fee",
+            "docs": [
+              "The user's ceiling. 0 means \"no ceiling\" — only sensible when you ARE the operator."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "expected_flat_fee",
+            "type": "u64"
+          },
+          {
+            "name": "per_round_amount",
+            "docs": [
+              "The TOTAL staked per round across every wallet, NOT the amount per wallet."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "shard_count",
+            "docs": [
+              "How many wallets to split it across. Clamped to what the bet can legally afford."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_shards",
+            "docs": [
+              "The most wallets this user consents to. The operator may move `shard_count` under it",
+              "and never above. 0 is read as 1."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "tile_count",
+            "docs": [
+              "The ONLY strategy choice. 5 / 9 / 21 in the UI; the program accepts anything the",
+              "config's min/max allows, so we can widen the menu without an upgrade."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "run_rounds",
+            "docs": [
+              "**How many rounds to play**, counted from the first round actually deployed. 0 = open",
+              "ended. Was `run_until_round`, an absolute board round id — see `Deployer::run_rounds`."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "when_funds_low",
+            "docs": [
+              "0 = STOP (default), 1 = KEEP RUNNING to defend the streak."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "max_per_tile",
+            "type": "u64"
+          },
+          {
+            "name": "min_bet",
+            "type": "u64"
+          },
+          {
+            "name": "stop_level",
+            "type": "u64"
+          },
+          {
+            "name": "auto_reload",
+            "type": "bool"
+          },
+          {
+            "name": "min_strike_pot_usd",
+            "docs": [
+              "**The bottom of the Sat Strike range**, in USDC micros. 0 means \"no bottom\".",
+              "See `Deployer::min_strike_pot_usd` for the four combinations."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_strike_pot_usd",
+            "docs": [
+              "**The top of the Sat Strike range**, in USDC micros. 0 (the default) means \"no top\"."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_share_bps",
+            "docs": [
+              "Fixed share of every ticket buy routed to the 1 BTC draw, in bps. 0 = the overflow",
+              "default. A guarantee to the JACKPOT, never to the epoch leg — see",
+              "`Deployer::btc_share_bps` for the exact semantics and why the epoch side stays",
+              "knee-capped."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Manager",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "**Who controls the position now.** Mutable — `transfer_manager` moves it."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_authority",
+            "docs": [
+              "**The wallet the PDA was derived from, forever.** Set once at creation and never",
+              "written again.",
+              "",
+              "This exists because the seed and the controller cannot be the same field. The address is",
+              "`[\"wk-manager\", seed_authority, index]`, so if `transfer_manager` moved the value the",
+              "address is derived from, the account would stop re-deriving to itself: the new owner",
+              "fails `ConstraintSeeds`, the old owner fails `has_one`, and `resolve_user` fails",
+              "`BadPda` — locking BOTH parties out of a shard that still holds their money, with no",
+              "instruction able to reach it. Pinned by `after_a_transfer_the_new_owner_can_still_withdraw`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Which of this wallet's positions this is. Stored as well as seeded, because",
+              "`resolve_user` has to re-derive the PDA from the account alone."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Post-mainnet expansion room — carve fields from the front so `LEN` never moves. Costs",
+              "each user ~0.0018 SOL of rent once; buys adding a field without migrating every live",
+              "Manager. See `Deployer::LEN` for the full argument."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkAdminAccepted",
+      "docs": [
+        "Step 2 — the handover completed and the old key is powerless from this slot on."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkAdminTransferStarted",
+      "docs": [
+        "Step 1 of the admin handover. Nothing changes until the pending key accepts."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "kind",
+            "docs": [
+              "`CLAIM_USD` or `CLAIM_SATS`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "USDC micros for a USD claim; shares burned for a sats claim."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "released_hashrate",
+            "docs": [
+              "Hashrate units freed. Always 0 for `CLAIM_USD` — measured: it does not touch the lock."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "usd_amount",
+            "docs": [
+              "MEASURED across the CPI. `amount` above is what we ASKED for (USDC owed, or shares to",
+              "burn); these two are what actually arrived in the shard. For a sats claim the difference",
+              "matters most: `amount` is shares burned, which is not a quantity of bitcoin, so without",
+              "`btc_amount` nothing on chain recorded how many satoshis the cash-back actually paid."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkCollectSkipped",
+      "docs": [
+        "One user was passed over during a collection batch, and this is why.",
+        "",
+        "Emitted for EVERY pass-over, including the routine ones. That is deliberate and it is the",
+        "whole point: an operator reconciling \"why has this shard not been paid\" needs to see the",
+        "difference between *we looked and there was nothing there* and *we never looked at all*.",
+        "Absence of an event now means the shard was never in a batch, which is itself a finding."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "op",
+            "docs": [
+              "One of the `OP_*` constants above."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "reason",
+            "docs": [
+              "A `SkipCause` discriminant."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "fault",
+            "docs": [
+              "`reason >= FIRST_FAULT`. Denormalised on purpose — an indexer filtering for \"things that",
+              "need a human\" must not have to know the numbering to do it."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_admin",
+            "docs": [
+              "Two-step handover so we cannot brick ourselves by setting a dead key."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "deploy_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "satrush_program",
+            "docs": [
+              "NOT a const — lets us retarget devnet or a Sat Rush redeploy without an upgrade."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "usd_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "btc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "flags",
+            "type": "u64"
+          },
+          {
+            "name": "params",
+            "type": {
+              "array": [
+                "u64",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "**Post-mainnet expansion room.** `params` (15 free u64 slots) and `flags` (60 free bits)",
+              "absorb every future NUMBER and SWITCH without an upgrade — but not a future named",
+              "pubkey (a second treasury, a new mint, a registry). This block absorbs that: carve a",
+              "field from its front, and `LEN` — which both off-chain readers length-check — never",
+              "moves. A singleton pays the extra rent exactly once, so unlike the per-user accounts",
+              "this trade was never close."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                256
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkConfigInitialized",
+      "docs": [
+        "The config singleton was born. One-time; every later change has its own event below."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_collector",
+            "type": "pubkey"
+          },
+          {
+            "name": "deploy_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "satrush_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "usd_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "btc_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkDeploySkipped",
+      "docs": [
+        "`reason` is a `SkipReason`. The crank must distinguish \"the user asked to stop\"",
+        "(`RunFinished`) from \"the user is out of money\" (`InsufficientFunds`) from \"our config",
+        "no longer permits their settings\" (`BadSettings`) — only the last is our problem to fix."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "round_id",
+            "type": "u32"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkDeployed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "round_id",
+            "type": "u32"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "docs": [
+              "The operator's cut."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "platform_fee",
+            "docs": [
+              "Our platform cut. Emitting both separately is what lets an operator reconcile their",
+              "own revenue from chain without trusting our accounting — and lets us do the same."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "operator",
+            "docs": [
+              "Which operator deployed this. On a multi-operator platform, \"who did this\" is no",
+              "longer implied by the program itself."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "tiles",
+            "type": "u8"
+          },
+          {
+            "name": "selection_mask",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkDeployerConfigured",
+      "docs": [
+        "Emitted on every settings write, so what a round will actually cost is on chain and",
+        "indexable rather than only in a UI the user may not have read.",
+        "",
+        "The reason this exists: **the flat fee legs are charged PER WALLET PER ROUND.** A user who",
+        "moves from 1 wallet to 3 pays the flat fee three times a round, and that is the single most",
+        "surprising thing about our pricing. `flat_fee_total` is the multiplied-out number, not the",
+        "per-wallet rate, precisely so nobody has to do the multiplication themselves to notice."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "deploy_authority",
+            "docs": [
+              "**The operator this position hired** — the platform's central act, and previously the",
+              "one thing no event recorded: from events alone, a user firing an operator (whose deploys",
+              "then stop with `FeeAboveCeiling` skips) was indistinguishable from one replacing them.",
+              "Every settings write now names the operator in force after it."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "per_round_amount",
+            "docs": [
+              "TOTAL staked per round, across all wallets."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "shard_count",
+            "type": "u16"
+          },
+          {
+            "name": "max_shards",
+            "docs": [
+              "The ceiling the user consented to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "tile_count",
+            "type": "u8"
+          },
+          {
+            "name": "operator_bps_fee",
+            "docs": [
+              "bps legs, applied to the stake — these do NOT change with the wallet count."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "platform_bps_fee",
+            "type": "u64"
+          },
+          {
+            "name": "flat_fee_total",
+            "docs": [
+              "Flat legs ALREADY MULTIPLIED by `shard_count`. This is what the user actually pays."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "cost_per_round",
+            "docs": [
+              "Stake + both fee legs. The exact figure the deploy path will charge."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "auto_reload",
+            "docs": [
+              "The behavior-shaping settings, so a position's run/recycle state is event-datable.",
+              "The full settings are always readable from the live `Deployer` account; these are the",
+              "two whose CHANGES most alter what the crank does next."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "run_rounds",
+            "type": "u32"
+          },
+          {
+            "name": "btc_share_bps",
+            "docs": [
+              "Fixed jackpot share, in bps; 0 = the overflow default. See `Deployer::btc_share_bps`."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkDeposited",
+      "docs": [
+        "USDC moved into a shard, and the stake budget that bought.",
+        "",
+        "Emitted because `stake_allowance` is otherwise invisible: it is the only thing that makes",
+        "`auto_reload = false` enforceable, and a user who cannot see their remaining budget cannot",
+        "tell \"my run finished as I asked\" from \"something is broken\". Reported as the running total",
+        "after this deposit, so a fan-out across N wallets shows the budget climbing to the whole",
+        "amount rather than N separate slices."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "stake_allowance",
+            "docs": [
+              "The user's TOTAL remaining stake budget after this deposit — per user, not per shard."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkFlagsSet",
+      "docs": [
+        "Flags moved — pauses live here, so this is the event that dates every halt and resume."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mask",
+            "type": "u64"
+          },
+          {
+            "name": "value",
+            "type": "u64"
+          },
+          {
+            "name": "old_flags",
+            "type": "u64"
+          },
+          {
+            "name": "new_flags",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkKeySet",
+      "docs": [
+        "A named address moved (fee collector, mints, the Sat Rush target...). `which` is the",
+        "`ConfigKey` discriminant."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "which",
+            "type": "u8"
+          },
+          {
+            "name": "old_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_key",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkManagerCreated",
+      "docs": [
+        "A position came into existence. Carries `authority` — the OWNING WALLET — which no other",
+        "event does (they all identify users by manager PDA): without this, the manager→wallet",
+        "mapping was not event-derivable at all."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkManagerTransferred",
+      "docs": [
+        "Control of a whole position — funds, withdrawal rights, everything — moved to a new key."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkParamSet",
+      "docs": [
+        "A numeric knob moved. Old and new both carried so a fee/threshold history needs no",
+        "state reconstruction — the delta IS the record."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "old_value",
+            "type": "u64"
+          },
+          {
+            "name": "new_value",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkRewardClaimed",
+      "docs": [
+        "A vault prize landed in the user's shard."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "vault",
+            "type": "u8"
+          },
+          {
+            "name": "iteration_id",
+            "type": "u32"
+          },
+          {
+            "name": "usd_amount",
+            "docs": [
+              "MEASURED across the CPI, not derived. Sat Rush computes the prize; we read the shard's",
+              "ATA before and after and record the difference. Without these two fields the largest",
+              "money event in the system — an epoch prize, or a whole bitcoin — left no on-chain record",
+              "of how much actually landed, and no amount could be reconciled after the fact."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkSettled",
+      "docs": [
+        "A deployment was settled.",
+        "",
+        "Settling is what credits hashrate, and hashrate is the entire profit of this system — every",
+        "vault ticket is bought with it. It produced NO on-chain record of any kind until now, which",
+        "meant the one step between \"we spent the user's money\" and \"the user has something to show",
+        "for it\" was the only step with nothing to reconcile against."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "round_id",
+            "type": "u32"
+          },
+          {
+            "name": "operator",
+            "docs": [
+              "Who settled. Settle is owner-signed through our PDA, so this is the operator that ran it."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "hashrate_gained",
+            "docs": [
+              "MEASURED across the CPI: the Miner's hashrate before and after. This is the number the",
+              "whole strategy turns on, and it was previously observable only by polling the account."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rent_to_user",
+            "docs": [
+              "Where Sat Rush's rent refund went. Config decides it, not the crank, and it is worth",
+              "recording per settle so a change of policy is visible in history rather than inferred."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkShardClosed",
+      "docs": [
+        "A dormant shard's two ATAs were closed and their rent returned to the user. `Manager` and",
+        "`Deployer` are deliberately left alive so the shard can still sign for a late prize — see",
+        "`handle_close_shard`.",
+        "",
+        "Carries no lamport figure. Anchor closes the ATAs and credits the user directly, and the",
+        "shard's own SOL float is deliberately never swept, so the only number this could report was",
+        "a hardcoded 0."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkTicketClosed",
+      "docs": [
+        "A spent 1 BTC ticket was closed and its rent returned to the shard that paid it. Only ever",
+        "emitted for a settled iteration and never for the winning block — see",
+        "`handle_close_one_btc_tickets_batch`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "iteration_id",
+            "type": "u32"
+          },
+          {
+            "name": "lamports_returned",
+            "docs": [
+              "MEASURED. Rent reclaim is the entire purpose of this instruction — without this field",
+              "the one path whose only product is recovered SOL reported no quantity at all.",
+              "(`WkShardClosed` deliberately carries no lamport figure; this is the one place a real",
+              "number exists to report.)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tickets",
+            "docs": [
+              "How many tickets the closed block held, for reconciling against the buy events."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkTicketsBought",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "vault",
+            "docs": [
+              "`VAULT_EPOCH` or `VAULT_ONE_BTC`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "tickets",
+            "type": "u64"
+          },
+          {
+            "name": "iteration_id",
+            "type": "u32"
+          },
+          {
+            "name": "operator",
+            "docs": [
+              "Who spent this user's hashrate. `WkDeployed` carries the same field so a multi-operator",
+              "world can attribute activity; a path that SPENDS hashrate needs it at least as much."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "page_index",
+            "docs": [
+              "Epoch only. Which page the entry landed on — needed to reconcile entries against pages,",
+              "and to tell a real page mismatch from ordinary mid-batch drift. u16 to match Sat Rush's",
+              "own type (`select_epoch_winner(pageIndex: u16)`), not widened for convenience."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "ticket",
+            "docs": [
+              "1 BTC only, and the single most recovery-critical field in this program.",
+              "",
+              "A 1 BTC ticket is a freshly generated KEYPAIR, deliberately not a PDA, so its address",
+              "cannot be re-derived from anything. If the crank's database is lost, the only way to",
+              "find our tickets again is to scan every account the program owns. Putting the address in",
+              "an event makes it recoverable from transaction history instead — which is the difference",
+              "between \"rebuild the index\" and \"a whole bitcoin we cannot prove we hold\"."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "start_ticket_id",
+            "docs": [
+              "1 BTC only. One account holds a whole BLOCK of tickets, and winning is decided by",
+              "`start <= winning < start + count`. Without the start on chain, a rebuilt index cannot",
+              "decide whether a block won without re-reading an account that may already be closed."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkTicketsSkipped",
+      "docs": [
+        "Emitted when we bought a user no tickets, and why.",
+        "",
+        "It used to carry no reason, so \"the knee is full, by design\" and \"the crank handed us the",
+        "wrong page\" produced byte-identical events and a post-mortem could not tell them apart."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "vault",
+            "type": "u8"
+          },
+          {
+            "name": "available_tickets",
+            "docs": [
+              "Floored to whole tickets by `/100`, so a user at 99 units reports 0 here and looks",
+              "identical to a user at 0. `available_units` below is the raw figure."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reason",
+            "docs": [
+              "A `SkipCause` discriminant."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "fault",
+            "docs": [
+              "`reason >= FIRST_FAULT`."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "iteration_id",
+            "docs": [
+              "Which iteration this decision belonged to. `WkTicketsBought` has always carried it;",
+              "without it here, a skip cannot be attributed to the iteration whose cap caused it."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "available_units",
+            "docs": [
+              "Raw hashrate units, unfloored — the number the threshold is actually compared against."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkWithdrawn",
+      "docs": [
+        "Money OUT — the mirror of `WkDeposited`. Emitted by both withdraw paths; `mint` is a field",
+        "because `withdraw_tokens` is mint-agnostic (it is how cbBTC leaves)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "remaining",
+            "docs": [
+              "What the shard's ATA still holds after this withdrawal, for reconciliation."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}
