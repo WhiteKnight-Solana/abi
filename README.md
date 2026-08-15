@@ -5,17 +5,30 @@ The canonical, versioned interface of the WhiteKnight program — an autominer f
 source of truth for *what the program looks like on the wire*: its IDL, its addresses, and the
 byte-exact layout facts an IDL cannot carry.
 
-> **Status: pre-mainnet.** The program is not deployed to mainnet yet. Every address that does
-> not exist yet is an explicit `null` listed under `pending` in `addresses.json`, and is
-> published here the moment it is real. Everything else — the IDL, the layouts, the Sat Rush
-> anchors — is final and test-pinned.
+> **Status: live on mainnet since 2026-08-15.** The program id is
+> **`WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS`**, published in `addresses.json` and
+> test-pinned. Verify it yourself rather than trusting this file:
+>
+> ```bash
+> solana program show WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS --url mainnet-beta
+> ```
+>
+> **Custody, stated plainly:** that command also prints the program's **upgrade authority** —
+> currently the single key `3B8wpWfD1T9oAhyDrAWEQU3Zxpog3nmrShr2XoEVXUML`, which is also the
+> platform admin and fee collector. Whoever holds it can replace the deployed code, including
+> the withdraw path, in one transaction with no delay. Deposits are non-custodial *as far as
+> the deployed code goes*, and the deployed code can be changed by that key. A move to a
+> multisig is planned before meaningful TVL; until the on-chain authority says a multisig,
+> assume a single key. The launch bytecode is sha256
+> `8148bccf3b2d415ce54a5d0e93008eb16fab586cf4c164e312c124048f5736dc` over its 654,800 bytes
+> (`solana program dump` pads with zeros to the allocated length — truncate before hashing).
 
 ## What is in here
 
 | Artifact | Contents |
 | --- | --- |
 | `idl/whiteknight.json` | The Anchor IDL exactly as `anchor build` produced it: 23 instructions, 3 accounts, 21 events, 34 error codes, all discriminators |
-| `addresses.json` | Per-cluster addresses: the WhiteKnight program (null until deployed), the Sat Rush program, USDC/cbBTC mints, token programs |
+| `addresses.json` | Per-cluster addresses: the WhiteKnight program, the Sat Rush program, USDC/cbBTC mints, token programs. A `null` means "not on that cluster"; the `pending` list names every null so absence is machine-checked |
 | `constants.json` | What the IDL cannot express: account lengths (`WkConfig` 753, `Manager` 331, `Deployer` 443 — these double as `getProgramAccounts` dataSize filters), PDA seed recipes for both programs, the param/flag tables, and every Sat Rush account size |
 | `MANIFEST.json` | sha256 of each artifact + the program-source commit they were exported from |
 
@@ -36,7 +49,7 @@ this package needs no build step, no install scripts, and no JSON-module support
 ```js
 import { idl, addresses, constants, manifest } from '@whiteknight-solana/abi';
 
-const programId = addresses.clusters.mainnet.whiteknightProgram; // null until deployed
+const programId = addresses.clusters.mainnet.whiteknightProgram; // WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS
 const deployerLen = constants.whiteknight.accountLens.Deployer;  // 443
 ```
 
