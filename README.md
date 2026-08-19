@@ -27,7 +27,7 @@ byte-exact layout facts an IDL cannot carry.
 
 | Artifact | Contents |
 | --- | --- |
-| `idl/whiteknight.json` | The Anchor IDL exactly as `anchor build` produced it: 23 instructions, 3 accounts, 21 events, 34 error codes, all discriminators |
+| `idl/whiteknight.json` | The Anchor IDL exactly as `anchor build` produced it: 24 instructions, 3 accounts, 22 events, 34 error codes, all discriminators |
 | `addresses.json` | Per-cluster addresses: the WhiteKnight program, the Sat Rush program, USDC/cbBTC mints, token programs. A `null` means "not on that cluster"; the `pending` list names every null so absence is machine-checked |
 | `constants.json` | What the IDL cannot express: account lengths (`WkConfig` 753, `Manager` 331, `Deployer` 443 — these double as `getProgramAccounts` dataSize filters), PDA seed recipes for both programs, the param/flag tables, and every Sat Rush account size |
 | `MANIFEST.json` | sha256 of each artifact + the program-source commit they were exported from |

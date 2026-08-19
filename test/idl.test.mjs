@@ -114,3 +114,92 @@ test('seed recipes are structurally valid', () => {
     }
   }
 });
+
+// =====================================================================================
+// user_flags — the per-position switches this package publishes for clients to act on.
+//
+// `userFlagsOffset` and the bit indices are the whole interface: a decoder that reads the
+// wrong offset reports a user as paused when they are not, and a client that sends the wrong
+// bit turns off the wrong thing. Neither is expressible inside the Anchor IDL, so both are
+// published here — and both are DERIVED from the IDL below rather than trusted as typed.
+// =====================================================================================
+
+test('userFlagsOffset is derived from the IDL, not asserted', () => {
+  const fields = types.get('Deployer').type.fields;
+  const idx = fields.findIndex((f) => f.name === 'user_flags');
+  assert.ok(idx > 0, 'Deployer has no user_flags field');
+  assert.deepEqual(fields[idx].type, 'u64', 'user_flags must stay a u64 bit field');
+
+  const derived =
+    8 + fields.slice(0, idx).reduce((n, f) => n + idlTypeSize(f.type, types), 0);
+  assert.equal(
+    derived,
+    constants.whiteknight.userFlagsOffset,
+    `IDL puts user_flags at byte ${derived}, constants publish ${constants.whiteknight.userFlagsOffset}`,
+  );
+  assert.equal(derived, 205, 'the published offset every decoder reads');
+
+  // It is a CARVE: it must sit after every field that predates it and immediately before the
+  // remaining reserve, or `accountLens` moved and every dataSize filter broke.
+  assert.equal(fields.at(-1).name, 'reserved', 'user_flags must not be the last field');
+  assert.equal(fields[idx + 1].name, 'reserved', 'a carve comes off the FRONT of the reserve');
+  assert.equal(
+    derived + 8 + constants.whiteknight.reserveWidths.Deployer,
+    constants.whiteknight.accountLens.Deployer,
+    'offset + the field + what is left of the reserve must be the whole account',
+  );
+});
+
+test('the published flag bits are distinct, in range, and zero means unchanged behaviour', () => {
+  const bits = Object.entries(constants.whiteknight.userFlags).filter(([k]) => !k.startsWith('_'));
+  assert.ok(bits.length >= 2, 'both switches must be published');
+  const seen = new Set();
+  for (const [name, index] of bits) {
+    assert.ok(Number.isInteger(index) && index >= 0 && index < 64, `${name}: ${index} is not a u64 bit index`);
+    assert.ok(!seen.has(index), `${name} collides with another switch on bit ${index}`);
+    seen.add(index);
+  }
+  // Pinned: these are an ABI. A renumber silently repoints every client's toggle at the
+  // other switch, and the program refuses unknown bits, so a wrong index is not even loud.
+  assert.equal(constants.whiteknight.userFlags.PAUSE_MINING, 0);
+  assert.equal(constants.whiteknight.userFlags.HOLD_VAULT_BUYS, 1);
+});
+
+test('set_user_flags takes a mask and a value and has no operator branch', () => {
+  const ix = idl.instructions.find((i) => i.name === 'set_user_flags');
+  assert.ok(ix, 'set_user_flags is missing from the IDL');
+  assert.deepEqual(
+    ix.args.map((a) => [a.name, a.type]),
+    [
+      ['mask', 'u64'],
+      ['value', 'u64'],
+    ],
+    'mask/value is what lets two switches move independently without a read-modify-write',
+  );
+
+  // THE access-control shape, published so a client cannot get it wrong: the signer is the
+  // position OWNER. There is no config account and no crank account, so nothing about this
+  // instruction can be reached by an operator.
+  const accounts = ix.accounts.map((a) => a.name);
+  assert.deepEqual(accounts, ['authority', 'manager', 'deployer']);
+  assert.equal(ix.accounts[0].signer, true, 'the owner signs');
+  assert.equal(ix.accounts[2].writable, true, 'the deployer is the account written');
+  assert.ok(!accounts.includes('config'), 'not an admin path');
+});
+
+test('adding the switches did not disturb what live clients already send', () => {
+  // The upgrade that introduced user_flags is only safe because these did not move. Pinned
+  // here, in the package every client builds against, rather than only in the program repo.
+  const settings = types.get('DeployerSettings').type.fields.map((f) => f.name);
+  assert.ok(!settings.includes('user_flags'), 'the switches must NOT be in the settings struct');
+  assert.deepEqual(settings.at(-1), 'btc_share_bps', 'the settings wire format is unchanged');
+
+  for (const name of ['create_deployer', 'update_deployer']) {
+    const ix = idl.instructions.find((i) => i.name === name);
+    assert.deepEqual(
+      ix.args.map((a) => a.name),
+      ['settings'],
+      `${name} still takes exactly one DeployerSettings argument`,
+    );
+  }
+});

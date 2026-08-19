@@ -1062,6 +1062,108 @@ export default {
       ]
     },
     {
+      "name": "set_user_flags",
+      "docs": [
+        "Move the user's own position switches — mining pause, vault-buy hold. See",
+        "`state::user_flag` for each bit and `SetUserFlags` for why this is its own instruction",
+        "rather than another `DeployerSettings` field.",
+        "",
+        "Signed by the manager authority ONLY. An operator has no branch here by design."
+      ],
+      "discriminator": [
+        195,
+        193,
+        122,
+        193,
+        232,
+        231,
+        216,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          },
+          "relations": [
+            "deployer"
+          ]
+        },
+        {
+          "name": "deployer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  100,
+                  101,
+                  112,
+                  108,
+                  111,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "mask",
+          "type": "u64"
+        },
+        {
+          "name": "value",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "transfer_admin",
       "discriminator": [
         42,
@@ -2945,6 +3047,19 @@ export default {
       ]
     },
     {
+      "name": "WkUserFlagsSet",
+      "discriminator": [
+        174,
+        167,
+        243,
+        114,
+        226,
+        74,
+        202,
+        214
+      ]
+    },
+    {
       "name": "WkWithdrawn",
       "discriminator": [
         128,
@@ -3457,6 +3572,20 @@ export default {
             "type": "u64"
           },
           {
+            "name": "user_flags",
+            "docs": [
+              "**The user's own switches** — see the `user_flag` module for each bit's exact meaning.",
+              "Written ONLY by `set_user_flags`, which is gated on the manager authority, so an",
+              "operator can never pause a user's mining or hold their ticket buying.",
+              "",
+              "The fourth carve from the launch reserve, and the first one that is deliberately a bit",
+              "field rather than a named field: switches added here later cost enforcement code and",
+              "nothing else, where a named `bool` would change `DeployerSettings` and with it the wire",
+              "format of `create_deployer` and `update_deployer` — every live client, every time."
+            ],
+            "type": "u64"
+          },
+          {
             "name": "reserved",
             "docs": [
               "**Post-mainnet expansion room, and the reversal of an earlier decision.** The previous",
@@ -3475,7 +3604,7 @@ export default {
             "type": {
               "array": [
                 "u8",
-                238
+                230
               ]
             }
           }
@@ -4544,6 +4673,47 @@ export default {
             "docs": [
               "Raw hashrate units, unfloored — the number the threshold is actually compared against."
             ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkUserFlagsSet",
+      "docs": [
+        "A user moved one of their own position switches — see `state::user_flag`.",
+        "",
+        "Mirrors `WkFlagsSet` one level down, and exists for the same reason stated at the top of",
+        "this section: an indexer must be able to reconstruct a position's complete history from",
+        "events alone. Without it, a position that stops mining because its owner pressed pause",
+        "would be indistinguishable from one that stopped because something broke — the skip events",
+        "say what happened every round, but only this says when and by whom the decision was made."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "mask",
+            "docs": [
+              "Which bits the write was allowed to touch, and what it set them to. Both carried so a",
+              "reader can tell \"the user turned the hold ON\" from \"the user re-saved every switch\"."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "value",
+            "type": "u64"
+          },
+          {
+            "name": "old_flags",
+            "type": "u64"
+          },
+          {
+            "name": "new_flags",
             "type": "u64"
           }
         ]

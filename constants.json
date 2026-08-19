@@ -7,10 +7,10 @@
       "Deployer": 443
     },
     "reserveWidths": {
-      "_comment": "The launch reserve: zero bytes appended pre-deploy that future fields are carved from, front-first, so accountLens never move. Deployer has had 18 bytes carved (btc_share_bps u16 + epoch_units_bought u64 + btc_units_bought u64).",
+      "_comment": "The launch reserve: zero bytes appended pre-deploy that future fields are carved from, front-first, so accountLens never move. Deployer has had 26 bytes carved (btc_share_bps u16 + epoch_units_bought u64 + btc_units_bought u64 + user_flags u64).",
       "WkConfig": 256,
       "Manager": 256,
-      "Deployer": 238
+      "Deployer": 230
     },
     "paramCount": 32,
     "deployAuthorityOffset": 40,
@@ -39,6 +39,12 @@
       "SETTLE_RENT_TO_US": 2,
       "ALLOW_NEW_MANAGERS": 3
     },
+    "userFlags": {
+      "_comment": "Bit INDICES into Deployer.user_flags (u64) — the switches a USER owns, moved only by set_user_flags(mask, value) signed by the manager authority. An operator can never write them. The value is 1n << index, and 0 is always the pre-existing behaviour, which is why the field could be carved into live accounts without a migration. PAUSE_MINING stops deploys only: settles, claims, prize collection and withdrawals all keep running. HOLD_VAULT_BUYS stops BOTH ticket legs so hashrate banks on the Miner; it does not stop claim_sats, which is money owed to the user. A mask touching any bit not listed here is rejected with BadSetting.",
+      "PAUSE_MINING": 0,
+      "HOLD_VAULT_BUYS": 1
+    },
+    "userFlagsOffset": 205,
     "seeds": {
       "_comment": "PDA seed recipes, in order. kind=literal is UTF-8 bytes of value; kind=pubkey is the named account's 32 bytes; u16le/u32le/u64le are the named argument little-endian.",
       "config": [
