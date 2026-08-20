@@ -152,7 +152,7 @@ test('userFlagsOffset is derived from the IDL, not asserted', () => {
 
 test('the published flag bits are distinct, in range, and zero means unchanged behaviour', () => {
   const bits = Object.entries(constants.whiteknight.userFlags).filter(([k]) => !k.startsWith('_'));
-  assert.ok(bits.length >= 2, 'both switches must be published');
+  assert.equal(bits.length, 3, 'every switch the program knows must be published, and no others');
   const seen = new Set();
   for (const [name, index] of bits) {
     assert.ok(Number.isInteger(index) && index >= 0 && index < 64, `${name}: ${index} is not a u64 bit index`);
@@ -163,6 +163,7 @@ test('the published flag bits are distinct, in range, and zero means unchanged b
   // other switch, and the program refuses unknown bits, so a wrong index is not even loud.
   assert.equal(constants.whiteknight.userFlags.PAUSE_MINING, 0);
   assert.equal(constants.whiteknight.userFlags.HOLD_VAULT_BUYS, 1);
+  assert.equal(constants.whiteknight.userFlags.HOLD_SATS, 2);
 });
 
 test('set_user_flags takes a mask and a value and has no operator branch', () => {
@@ -202,4 +203,68 @@ test('adding the switches did not disturb what live clients already send', () =>
       `${name} still takes exactly one DeployerSettings argument`,
     );
   }
+});
+
+// =====================================================================================
+// remainingAccounts — the shape an IDL cannot describe.
+//
+// An Anchor IDL names a fixed account list. The batch instructions then append a repeating
+// run whose stride the IDL says nothing about, so a client that gets the stride wrong does
+// not fail at compile time or at decode time: it sends a transaction that either reverts, or
+// — the dangerous case — is reinterpreted as a different number of users. This block is the
+// only published statement of that shape, which makes it worth testing as an interface.
+// =====================================================================================
+
+test('the published claim_sats stride is self-consistent', () => {
+  const ra = constants.whiteknight.remainingAccounts;
+  assert.ok(ra, 'remainingAccounts is not published');
+  const c = ra.wk_claim_sats_batch;
+  assert.ok(c, 'wk_claim_sats_batch shape is not published');
+
+  // Only shapes for instructions that actually exist, or a rename leaves a lie behind.
+  for (const name of Object.keys(ra).filter((k) => !k.startsWith('_'))) {
+    assert.ok(
+      idl.instructions.some((i) => i.name === name),
+      `remainingAccounts names ${name}, which is not an instruction in this IDL`,
+    );
+  }
+
+  assert.deepEqual(c.perUser, [4, 5], 'four or five accounts per user, in ascending order');
+  // `order` must describe the LONGEST accepted shape, and the optional tail must start exactly
+  // where the shorter shape ends — otherwise a client building the five-account form has no
+  // way to know which name the extra account takes.
+  assert.equal(c.order.length, Math.max(...c.perUser), 'order must name every account of the longest shape');
+  assert.equal(c.optionalFrom, Math.min(...c.perUser), 'the optional tail begins where the shortest shape ends');
+  assert.equal(new Set(c.order).size, c.order.length, 'account names must be distinct');
+  assert.equal(c.order[c.optionalFrom], 'deployer', 'the fifth account is the Deployer that carries user_flags');
+
+  // The two refusals are quoted by name, so they must be real errors this program can throw.
+  // A typo here sends a client hunting for a code that does not exist.
+  for (const named of Object.values(c.errors)) {
+    assert.ok(
+      idl.errors.some((e) => e.name === named),
+      `remainingAccounts quotes error ${named}, which this IDL does not define`,
+    );
+  }
+});
+
+test('the fifth account is what makes HOLD_SATS enforceable, and the IDL agrees it is not named', () => {
+  // The flag lives on Deployer. If some future edit adds `deployer` to the instruction's FIXED
+  // account list, the fifth remaining account becomes redundant and this published shape becomes
+  // actively misleading — so tie the two together rather than letting them drift apart.
+  const ix = idl.instructions.find((i) => i.name === 'wk_claim_sats_batch');
+  assert.ok(ix, 'wk_claim_sats_batch is missing from the IDL');
+  assert.ok(
+    !ix.accounts.some((a) => a.name === 'deployer'),
+    'deployer is now a named account — the published remaining-account shape must be revisited',
+  );
+
+  // And the account it names must be one this IDL actually defines, carrying the flag field.
+  const dep = (idl.accounts ?? []).find((a) => a.name === 'Deployer');
+  assert.ok(dep, 'Deployer is not an account in this IDL');
+  const fields = types.get('Deployer').type.fields;
+  assert.ok(
+    fields.some((f) => f.name === 'user_flags'),
+    'Deployer no longer carries user_flags — HOLD_SATS could not be enforced',
+  );
 });

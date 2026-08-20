@@ -40,11 +40,22 @@
       "ALLOW_NEW_MANAGERS": 3
     },
     "userFlags": {
-      "_comment": "Bit INDICES into Deployer.user_flags (u64) — the switches a USER owns, moved only by set_user_flags(mask, value) signed by the manager authority. An operator can never write them. The value is 1n << index, and 0 is always the pre-existing behaviour, which is why the field could be carved into live accounts without a migration. PAUSE_MINING stops deploys only: settles, claims, prize collection and withdrawals all keep running. HOLD_VAULT_BUYS stops BOTH ticket legs so hashrate banks on the Miner; it does not stop claim_sats, which is money owed to the user. A mask touching any bit not listed here is rejected with BadSetting.",
+      "_comment": "Bit INDICES into Deployer.user_flags (u64) — the switches a USER owns, moved only by set_user_flags(mask, value) signed by the manager authority. An operator can never write them. The value is 1n << index, and 0 is always the pre-existing behaviour, which is why the field could be carved into live accounts without a migration. PAUSE_MINING stops deploys only: settles, claims, prize collection and withdrawals all keep running. HOLD_VAULT_BUYS stops BOTH ticket legs so hashrate banks on the Miner; it does not stop claim_sats, which is money owed to the user. HOLD_SATS stops claim_sats so the position keeps its SatsVault shares and earns the 10% fee every OTHER claimer pays; the cost is that claim_sats is the only thing that releases locked hashrate, so holding freezes 35% of everything mined, and it is enforced ONLY when the caller passes the Deployer as a fifth remaining account (see remainingAccounts) — a four-account caller claims for a holder as before. A mask touching any bit not listed here is rejected with BadSetting.",
       "PAUSE_MINING": 0,
-      "HOLD_VAULT_BUYS": 1
+      "HOLD_VAULT_BUYS": 1,
+      "HOLD_SATS": 2
     },
     "userFlagsOffset": 205,
+    "remainingAccounts": {
+      "_comment": "Per-user remaining_accounts, in order, for the batch instructions whose shape the IDL cannot express — an IDL describes named accounts, and these are a repeating run appended after them. Transcribed from the program source (claim.rs) and verified against the deployed program by simulation, NOT inferred. Only wk_claim_sats_batch is published here because only its shape has been proven both ways; the other batch instructions have a single fixed stride and are not yet published rather than being guessed at.",
+      "wk_claim_sats_batch": {
+        "_comment": "FOUR or FIVE accounts per user, and the choice is the caller's. Four is what every client deployed before 2026-08-20 sends and it still works exactly as it did — the upgrade could not require five without failing every live caller from the moment it landed. Five adds the position's Deployer, which is the account carrying user_flags, and is what lets the program see HOLD_SATS at all: a four-account call cannot read the flag so it claims for a holder regardless. Any other multiple is refused with BadRemainingAccounts (6021). Passing another position's Deployer is refused with BadPda (6003), so a caller cannot choose which switch to read. The signer matters: when the signer IS the position's own authority the hold is ignored and the claim proceeds — that is the force-sweep, and it needs no separate instruction.",
+        "perUser": [4, 5],
+        "order": ["manager", "wk_auth", "miner", "btc_ata", "deployer"],
+        "optionalFrom": 4,
+        "errors": { "wrongCount": "BadRemainingAccounts", "foreignDeployer": "BadPda" }
+      }
+    },
     "seeds": {
       "_comment": "PDA seed recipes, in order. kind=literal is UTF-8 bytes of value; kind=pubkey is the named account's 32 bytes; u16le/u32le/u64le are the named argument little-endian.",
       "config": [
