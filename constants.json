@@ -1,5 +1,5 @@
 {
-  "_comment": "Layout constants that are not expressible inside the Anchor IDL. Account lengths are byte-exact and double as getProgramAccounts dataSize filters, so a drift here is a silent empty scan — test/idl.test.mjs re-derives every length from the IDL type definitions and fails if this file disagrees.",
+  "_comment": "Layout constants that are not expressible inside the Anchor IDL. Account lengths are byte-exact and double as getProgramAccounts dataSize filters, so a drift here is a silent empty scan \u2014 test/idl.test.mjs re-derives every length from the IDL type definitions and fails if this file disagrees.",
   "whiteknight": {
     "accountLens": {
       "WkConfig": 753,
@@ -33,48 +33,138 @@
       "EPOCH_FLOOR_TICKETS": 16
     },
     "flags": {
-      "_comment": "Bit INDICES into WkConfig.flags (u64). The flag value is 1n << index.",
+      "_comment": "Bit INDICES into WkConfig.flags (u64). The flag value is 1n << index. PAUSED_DEPLOY is an INCIDENT-ONLY deploy halt since v2: it stops money going in while settle/claim/withdraw keep running (withdraw-under-halt is pinned by program test), and it is never a product pause \u2014 routine operator maintenance is stopping the crank, and a user pausing themselves is a control-plane row the crank honors.",
       "PAUSED_ALL": 0,
       "PAUSED_DEPLOY": 1,
       "SETTLE_RENT_TO_US": 2,
       "ALLOW_NEW_MANAGERS": 3
     },
     "userFlags": {
-      "_comment": "Bit INDICES into Deployer.user_flags (u64) — the switches a USER owns, moved only by set_user_flags(mask, value) signed by the manager authority. An operator can never write them. The value is 1n << index, and 0 is always the pre-existing behaviour, which is why the field could be carved into live accounts without a migration. PAUSE_MINING stops deploys only: settles, claims, prize collection and withdrawals all keep running. HOLD_VAULT_BUYS stops BOTH ticket legs so hashrate banks on the Miner; it does not stop claim_sats, which is money owed to the user. HOLD_SATS stops claim_sats so the position keeps its SatsVault shares and earns the 10% fee every OTHER claimer pays; the cost is that claim_sats is the only thing that releases locked hashrate, so holding freezes 35% of everything mined, and it is enforced ONLY when the caller passes the Deployer as a fifth remaining account (see remainingAccounts) — a four-account caller claims for a holder as before. A mask touching any bit not listed here is rejected with BadSetting.",
+      "_comment": "Bit INDICES into Deployer.user_flags (u64) \u2014 the switches a USER owns, moved only by set_user_flags(mask, value) signed by the manager authority. An operator can never write them. The value is 1n << index, and 0 is always the pre-existing behaviour. PAUSE_MINING is LEGACY as of v2: the program no longer reads it (pause is operator policy; the deploy path executes whatever the crank sends), but the bit stays settable and the CRANK is expected to keep honoring a set bit as 'paused' until the frontend stops writing it \u2014 a user's standing instruction must not be dropped by the upgrade. HOLD_VAULT_BUYS still gates BOTH ticket legs on chain so hashrate banks on the Miner; it does not stop claim_sats, which is money owed to the user. HOLD_SATS still gates claim_sats (enforced only when the caller passes the Deployer as the fifth remaining account; the position's own authority overrides \u2014 the force-sweep). A mask touching any bit not listed here is rejected with BadSetting.",
       "PAUSE_MINING": 0,
       "HOLD_VAULT_BUYS": 1,
       "HOLD_SATS": 2
     },
     "userFlagsOffset": 205,
     "remainingAccounts": {
-      "_comment": "Per-user remaining_accounts, in order, for the batch instructions whose shape the IDL cannot express — an IDL describes named accounts, and these are a repeating run appended after them. Transcribed from the program source (claim.rs) and verified against the deployed program by simulation, NOT inferred. Only wk_claim_sats_batch is published here because only its shape has been proven both ways; the other batch instructions have a single fixed stride and are not yet published rather than being guessed at.",
+      "_comment": "Per-user remaining_accounts, in order, for the batch instructions whose shape the IDL cannot express \u2014 an IDL describes named accounts, and these are a repeating run appended after them. Transcribed from the program source (claim.rs) and verified against the deployed program by simulation, NOT inferred. Only wk_claim_sats_batch is published here because only its shape has been proven both ways; the other batch instructions have a single fixed stride and are not yet published rather than being guessed at.",
       "wk_claim_sats_batch": {
-        "_comment": "FOUR or FIVE accounts per user, and the choice is the caller's. Four is what every client deployed before 2026-08-20 sends and it still works exactly as it did — the upgrade could not require five without failing every live caller from the moment it landed. Five adds the position's Deployer, which is the account carrying user_flags, and is what lets the program see HOLD_SATS at all: a four-account call cannot read the flag so it claims for a holder regardless. Any other multiple is refused with BadRemainingAccounts (6021). Passing another position's Deployer is refused with BadPda (6003), so a caller cannot choose which switch to read. The signer matters: when the signer IS the position's own authority the hold is ignored and the claim proceeds — that is the force-sweep, and it needs no separate instruction.",
-        "perUser": [4, 5],
-        "order": ["manager", "wk_auth", "miner", "btc_ata", "deployer"],
+        "_comment": "FOUR or FIVE accounts per user, and the choice is the caller's. Four is what every client deployed before 2026-08-20 sends and it still works exactly as it did \u2014 the upgrade could not require five without failing every live caller from the moment it landed. Five adds the position's Deployer, which is the account carrying user_flags, and is what lets the program see HOLD_SATS at all: a four-account call cannot read the flag so it claims for a holder regardless. Any other multiple is refused with BadRemainingAccounts (6021). Passing another position's Deployer is refused with BadPda (6003), so a caller cannot choose which switch to read. The signer matters: when the signer IS the position's own authority the hold is ignored and the claim proceeds \u2014 that is the force-sweep, and it needs no separate instruction.",
+        "perUser": [
+          4,
+          5
+        ],
+        "order": [
+          "manager",
+          "wk_auth",
+          "miner",
+          "btc_ata",
+          "deployer"
+        ],
         "optionalFrom": 4,
-        "errors": { "wrongCount": "BadRemainingAccounts", "foreignDeployer": "BadPda" }
+        "errors": {
+          "wrongCount": "BadRemainingAccounts",
+          "foreignDeployer": "BadPda"
+        }
       }
     },
     "seeds": {
       "_comment": "PDA seed recipes, in order. kind=literal is UTF-8 bytes of value; kind=pubkey is the named account's 32 bytes; u16le/u32le/u64le are the named argument little-endian.",
       "config": [
-        { "kind": "literal", "value": "wk-config" }
+        {
+          "kind": "literal",
+          "value": "wk-config"
+        }
       ],
       "manager": [
-        { "kind": "literal", "value": "wk-manager" },
-        { "kind": "pubkey", "name": "authority" },
-        { "kind": "u16le", "name": "index" }
+        {
+          "kind": "literal",
+          "value": "wk-manager"
+        },
+        {
+          "kind": "pubkey",
+          "name": "authority"
+        },
+        {
+          "kind": "u16le",
+          "name": "index"
+        }
       ],
       "deployer": [
-        { "kind": "literal", "value": "wk-deployer" },
-        { "kind": "pubkey", "name": "manager" }
+        {
+          "kind": "literal",
+          "value": "wk-deployer"
+        },
+        {
+          "kind": "pubkey",
+          "name": "manager"
+        }
       ],
       "auth": [
-        { "kind": "literal", "value": "wk-auth" },
-        { "kind": "pubkey", "name": "manager" },
-        { "kind": "u64le", "name": "authId" }
+        {
+          "kind": "literal",
+          "value": "wk-auth"
+        },
+        {
+          "kind": "pubkey",
+          "name": "manager"
+        },
+        {
+          "kind": "u64le",
+          "name": "authId"
+        }
       ]
+    },
+    "reservedUnusedParams": {
+      "_comment": "Param slots the program STOPPED reading in the thin-wrapper upgrade (v2). Indexes are a stable ABI and never shift; the seeded values remain as reference numbers an operator may copy into its own off-chain config. 7 (HASHRATE_TILE_COEFF) was already unread before v2; 10/11/16 fed the on-chain ticket-split engine (epoch knee, dust threshold, bootstrap floor), which is operator ticket policy in the crank now.",
+      "indexes": [
+        7,
+        10,
+        11,
+        16
+      ]
+    },
+    "itemShapes": {
+      "_comment": "The v2 batch-instruction item structs, byte-exact. Borsh: little-endian, vec = u32 length prefix + items. The instruction DISCRIMINATORS did not change in v2 (Anchor sighash is name-only); only these arg bodies did, which is why an old client against the new program fails borsh decode loudly \u2014 the intended atomic-cutover failure mode. DeployItem.amount must be >= MIN_DEPLOY_AMOUNT, <= MAX_PER_ROUND_AMOUNT (per shard, 0 disables), divisible by popcount(tile_mask), and must fit the user's max_per_round meter; tile_mask needs popcount within [MIN_TILE_COUNT, MAX_TILE_COUNT] and bits within TILE_TOTAL. BuyTicketItem.tickets is WHOLE TICKETS (1 ticket = 100 hashrate units) and must fit the miner's spendable hashrate. Violations are per-item skips (WkDeploySkipped/WkTicketsSkipped), never batch failures \u2014 except a duplicated shard, which reverts whole with DuplicateAuthId.",
+      "DeployItem": {
+        "bytes": 20,
+        "fields": [
+          {
+            "name": "auth_id",
+            "type": "u64",
+            "offset": 0
+          },
+          {
+            "name": "amount",
+            "type": "u64",
+            "offset": 8
+          },
+          {
+            "name": "tile_mask",
+            "type": "u32",
+            "offset": 16
+          }
+        ]
+      },
+      "BuyTicketItem": {
+        "bytes": 16,
+        "fields": [
+          {
+            "name": "auth_id",
+            "type": "u64",
+            "offset": 0
+          },
+          {
+            "name": "tickets",
+            "type": "u64",
+            "offset": 8
+          }
+        ]
+      }
+    },
+    "maxPerRound": {
+      "_comment": "v2 reinterprets Deployer byte offset 107 (was per_round_amount, the exact bet the program divided) as max_per_round: the ceiling on the round's TOTAL stake across all the user's shards, enforced by the last_round/staked_in_round meter, skip-never-clamp. The DeployerSettings WIRE field keeps the name per_round_amount for client compatibility and lands in this slot.",
+      "deployerFieldOffset": 107
     }
   },
   "satrush": {
@@ -99,52 +189,158 @@
       "PublicAutomation": 129
     },
     "states": {
-      "round": ["Active", "Revealed", "Settled", "Finished"],
-      "epoch": ["Open", "Settling", "Settled", "Complete"],
-      "oneBtc": ["Open", "Settled", "Complete"]
+      "round": [
+        "Active",
+        "Revealed",
+        "Settled",
+        "Finished"
+      ],
+      "epoch": [
+        "Open",
+        "Settling",
+        "Settled",
+        "Complete"
+      ],
+      "oneBtc": [
+        "Open",
+        "Settled",
+        "Complete"
+      ]
     },
     "seeds": {
-      "config": [{ "kind": "literal", "value": "satrush_config" }],
-      "board": [{ "kind": "literal", "value": "board" }],
-      "satsVault": [{ "kind": "literal", "value": "sats_vault" }],
-      "epochVault": [{ "kind": "literal", "value": "epoch_vault" }],
-      "oneBtcVault": [{ "kind": "literal", "value": "one_btc_vault" }],
-      "treasury": [{ "kind": "literal", "value": "treasury" }],
-      "eventAuthority": [{ "kind": "literal", "value": "__event_authority" }],
+      "config": [
+        {
+          "kind": "literal",
+          "value": "satrush_config"
+        }
+      ],
+      "board": [
+        {
+          "kind": "literal",
+          "value": "board"
+        }
+      ],
+      "satsVault": [
+        {
+          "kind": "literal",
+          "value": "sats_vault"
+        }
+      ],
+      "epochVault": [
+        {
+          "kind": "literal",
+          "value": "epoch_vault"
+        }
+      ],
+      "oneBtcVault": [
+        {
+          "kind": "literal",
+          "value": "one_btc_vault"
+        }
+      ],
+      "treasury": [
+        {
+          "kind": "literal",
+          "value": "treasury"
+        }
+      ],
+      "eventAuthority": [
+        {
+          "kind": "literal",
+          "value": "__event_authority"
+        }
+      ],
       "round": [
-        { "kind": "literal", "value": "round" },
-        { "kind": "u32le", "name": "roundId" }
+        {
+          "kind": "literal",
+          "value": "round"
+        },
+        {
+          "kind": "u32le",
+          "name": "roundId"
+        }
       ],
       "miner": [
-        { "kind": "literal", "value": "miner" },
-        { "kind": "pubkey", "name": "authority" }
+        {
+          "kind": "literal",
+          "value": "miner"
+        },
+        {
+          "kind": "pubkey",
+          "name": "authority"
+        }
       ],
       "publicDeployment": [
-        { "kind": "literal", "value": "public_deployment" },
-        { "kind": "pubkey", "name": "authority" },
-        { "kind": "u32le", "name": "roundId" }
+        {
+          "kind": "literal",
+          "value": "public_deployment"
+        },
+        {
+          "kind": "pubkey",
+          "name": "authority"
+        },
+        {
+          "kind": "u32le",
+          "name": "roundId"
+        }
       ],
       "publicAutomation": [
-        { "kind": "literal", "value": "public_automation" },
-        { "kind": "pubkey", "name": "authority" }
+        {
+          "kind": "literal",
+          "value": "public_automation"
+        },
+        {
+          "kind": "pubkey",
+          "name": "authority"
+        }
       ],
       "epochVaultIteration": [
-        { "kind": "literal", "value": "epoch_vault_iteration" },
-        { "kind": "u32le", "name": "iterationId" }
+        {
+          "kind": "literal",
+          "value": "epoch_vault_iteration"
+        },
+        {
+          "kind": "u32le",
+          "name": "iterationId"
+        }
       ],
       "epochVaultPage": [
-        { "kind": "literal", "value": "epoch_vault_page" },
-        { "kind": "u32le", "name": "iterationId" },
-        { "kind": "u16le", "name": "pageIndex" }
+        {
+          "kind": "literal",
+          "value": "epoch_vault_page"
+        },
+        {
+          "kind": "u32le",
+          "name": "iterationId"
+        },
+        {
+          "kind": "u16le",
+          "name": "pageIndex"
+        }
       ],
       "epochVaultEntry": [
-        { "kind": "literal", "value": "epoch_vault_entry" },
-        { "kind": "u32le", "name": "iterationId" },
-        { "kind": "pubkey", "name": "authority" }
+        {
+          "kind": "literal",
+          "value": "epoch_vault_entry"
+        },
+        {
+          "kind": "u32le",
+          "name": "iterationId"
+        },
+        {
+          "kind": "pubkey",
+          "name": "authority"
+        }
       ],
       "oneBtcVaultIteration": [
-        { "kind": "literal", "value": "one_btc_vault_iteration" },
-        { "kind": "u32le", "name": "iterationId" }
+        {
+          "kind": "literal",
+          "value": "one_btc_vault_iteration"
+        },
+        {
+          "kind": "u32le",
+          "name": "iterationId"
+        }
       ]
     }
   }

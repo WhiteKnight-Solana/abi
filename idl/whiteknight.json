@@ -1876,8 +1876,10 @@
     {
       "name": "wk_buy_epoch_tickets_batch",
       "docs": [
-        "Fill each shard's epoch position up to the saturation knee. Run this BEFORE the 1 BTC",
-        "batch — the split rule is stateless and reads what has already been bought."
+        "Buy epoch tickets, counts named per shard by the crank. The knee/split policy that",
+        "used to live here is operator ticket policy now; the program enforces only the spend",
+        "(whole tickets, within SPENDABLE hashrate, operator-gated per user) and the page",
+        "mechanics. Order relative to the 1 BTC batch is the crank's own business."
       ],
       "discriminator": [
         251,
@@ -1944,9 +1946,13 @@
       ],
       "args": [
         {
-          "name": "auth_ids",
+          "name": "items",
           "type": {
-            "vec": "u64"
+            "vec": {
+              "defined": {
+                "name": "BuyTicketItem"
+              }
+            }
           }
         }
       ]
@@ -1954,8 +1960,8 @@
     {
       "name": "wk_buy_one_btc_tickets_batch",
       "docs": [
-        "Sweep whatever hashrate is left into the 1 BTC vault, which cannot dilute us.",
-        "Signature-bound: each user needs a fresh ticket keypair that signs."
+        "Buy 1 BTC tickets, counts named per shard by the crank — same contract as the epoch",
+        "batch. Signature-bound: each user needs a fresh ticket keypair that signs."
       ],
       "discriminator": [
         35,
@@ -2019,9 +2025,13 @@
       ],
       "args": [
         {
-          "name": "auth_ids",
+          "name": "items",
           "type": {
-            "vec": "u64"
+            "vec": {
+              "defined": {
+                "name": "BuyTicketItem"
+              }
+            }
           }
         }
       ]
@@ -2321,10 +2331,10 @@
         "Pull USDC winnings back into each shard, where the next deploy spends them.",
         "",
         "Runs for everyone owed something, UNCONDITIONALLY — `auto_reload` is deliberately not",
-        "consulted here. Claiming and staking are separate decisions: money the protocol owes a",
-        "user must never be left sitting in Sat Rush, whatever they asked us to do with it",
-        "afterwards. The flag is enforced one step later, in `plan_deploy`, against",
-        "`Deployer::stake_allowance`."
+        "consulted here, and since the thin-wrapper upgrade it is not consulted ANYWHERE on",
+        "chain: the reload preference is enforced by the crank's own ledger. Claiming and",
+        "staking are separate decisions: money the protocol owes a user must never be left",
+        "sitting in Sat Rush, whatever they asked their operator to do with it afterwards."
       ],
       "discriminator": [
         135,
@@ -2484,8 +2494,13 @@
     {
       "name": "wk_deploy_batch",
       "docs": [
-        "N users per call. Charges our fee, derives each shard's tiles on chain, and CPIs",
-        "Sat Rush's `deploy_public`. Skips users who cannot pay; never reverts because of one."
+        "N items per call, each naming a shard, an amount, and a tile mask — THE CRANK CHOOSES",
+        "ALL THREE. This program is the bouncer, not the strategist: it checks each request",
+        "against the user's consent (fee ceilings, the `max_per_round` meter, wallet range),",
+        "the protocol's bounds (min/max amount, mask legality, divisibility), and the balance,",
+        "then charges our fee and CPIs Sat Rush's `deploy_public` with the request verbatim.",
+        "A request that fails a bound is SKIPPED (a `WkDeploySkipped` event), never resized,",
+        "and never reverts the batch because of one bad item."
       ],
       "discriminator": [
         225,
@@ -2501,8 +2516,9 @@
         {
           "name": "crank",
           "docs": [
-            "**Any** operator's crank. Pays transaction fees; cannot choose tiles or amounts, and",
-            "cannot touch a user who did not name it.",
+            "**Any** operator's crank. Pays transaction fees and — since the thin-wrapper upgrade —",
+            "NAMES each item's amount and tile mask; what it cannot do is touch a user who did not",
+            "hire it, charge past their fee ceiling, or stake past their `max_per_round` meter.",
             "",
             "Deliberately NOT constrained to `config.deploy_authority` — that global gate is what",
             "made Whiteknight single-operator. The real security boundary is per user, below:",
@@ -2560,28 +2576,14 @@
         },
         {
           "name": "board",
-          "docs": [
-            "for the `min_strike_pot_usd` gate, and a gate that skips everyone never reaches the CPI",
-            "that would have caught a fake — so deriving it here is what stops a crank holding gated",
-            "users out of rounds by passing a board with a thin pot."
-          ],
           "writable": true
         },
         {
           "name": "round",
-          "writable": true
-        },
-        {
-          "name": "previous_round",
           "docs": [
-            "The PREVIOUS round, read-only, and the reason the strike gate needs no oracle: Sat Rush",
-            "swapped part of its deploys from USDC into cbBTC through Jupiter and recorded both sides",
-            "here, which is a market rate.",
-            "",
-            "Derived as `round_id - 1` rather than passed as an argument, so the crank has no say in",
-            "which round prices the pot. Always supplied, only READ when somebody in the batch has",
-            "the gate armed; costs one account lock and leaves the batch at nine users."
-          ]
+            "compromised crank cannot point deploys at a stale or unrelated round."
+          ],
+          "writable": true
         },
         {
           "name": "board_usd_ata",
@@ -2607,9 +2609,13 @@
           "type": "u32"
         },
         {
-          "name": "auth_ids",
+          "name": "items",
           "type": {
-            "vec": "u64"
+            "vec": {
+              "defined": {
+                "name": "DeployItem"
+              }
+            }
           }
         }
       ]
@@ -3241,9 +3247,43 @@
       "code": 6033,
       "name": "NotUpgradeAuthority",
       "msg": "init_config must be signed by the program's upgrade authority"
+    },
+    {
+      "code": 6034,
+      "name": "DuplicateAuthId",
+      "msg": "the same shard appears twice in one deploy batch"
     }
   ],
   "types": [
+    {
+      "name": "BuyTicketItem",
+      "docs": [
+        "One shard's ticket request, in WHOLE TICKETS — the unit both Sat Rush buy CPIs take on",
+        "the wire, so nothing is converted or floored between the crank's ask and the CPI. The",
+        "spend check is `units_for_tickets(tickets) <= Miner.hashrate_amount` (1 ticket = 100",
+        "units), exact and never partial: a request the bank cannot cover is skipped whole, so a",
+        "crank sizing bug surfaces as a skip event instead of a silent smaller buy."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "auth_id",
+            "docs": [
+              "Shard index under the user's Manager; the item's remaining accounts must match it."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tickets",
+            "docs": [
+              "Whole tickets to buy for this shard. Zero is a skip (`ZeroRequest`), not an error."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "ConfigKey",
       "docs": [
@@ -3269,6 +3309,47 @@
           },
           {
             "name": "BtcMint"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DeployItem",
+      "docs": [
+        "One shard's deploy request, exactly as the crank chose it.",
+        "",
+        "Borsh wire format: `auth_id u64 LE ‖ amount u64 LE ‖ tile_mask u32 LE` — 20 bytes per",
+        "item, length-prefixed as a vec. The instruction discriminator did not change with the",
+        "arg layout (Anchor sighash is name-only), so an OLD crank sending `Vec<u64>` against this",
+        "program fails borsh decode loudly rather than being misread — the intended atomic-cutover",
+        "failure mode."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "auth_id",
+            "docs": [
+              "Shard index under the user's Manager; the item's five remaining accounts must match it."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "USDC micros THIS shard stakes this round — the bet, not including either fee leg,",
+              "both of which are charged on top exactly as before."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tile_mask",
+            "docs": [
+              "Bit i set ⇒ tile (i+1) selected. Forwarded to Sat Rush verbatim after `mask_is_legal`;",
+              "Sat Rush splits `amount` evenly across the set bits, which is why `amount` must divide",
+              "by the popcount (checked here, skipped if not — never rounded)."
+            ],
+            "type": "u32"
           }
         ]
       }
@@ -3305,8 +3386,10 @@
           {
             "name": "shard_count",
             "docs": [
-              "How many wallets the bet is actually split across right now. Operator-writable, but",
-              "only within `max_shards`. Each wallet deploys `per_round_amount / shard_count`."
+              "How many wallets the operator is running right now. Operator-writable, but only",
+              "within `max_shards`. Purely a wallet-count consent bound: the crank sizes each",
+              "wallet's stake itself, and the program's `auth_id < shard_count` check plus the",
+              "`max_per_round` meter are what bound the money."
             ],
             "type": "u16"
           },
@@ -3330,187 +3413,128 @@
             "type": "u8"
           },
           {
-            "name": "per_round_amount",
+            "name": "max_per_round",
             "docs": [
-              "**The TOTAL staked per round, across every wallet.** Each wallet deploys",
-              "`per_round_amount / shard_count`, computed on chain - so the amount a user asks for is",
-              "the amount they spend, whatever the wallet count, and no funding change can ever turn",
-              "into an overspend."
+              "**The most USDC this position may stake per round, TOTAL across every wallet.**",
+              "",
+              "This is the thin-wrapper upgrade's load-bearing reinterpretation: the same byte slot",
+              "held `per_round_amount`, the EXACT bet the program divided across wallets. The crank",
+              "chooses each wallet's stake now, and this became the ceiling it must fit under —",
+              "enforced by the `last_round`/`staked_in_round` meter below as",
+              "`already_staked_this_round + this_amount <= max_per_round`, item skipped (never",
+              "clamped) on breach. Same offset, so every live account's \"exact bet\" became \"cap at",
+              "that bet\" at upgrade, which is the no-surprise migration: nobody can be staked MORE",
+              "than they were already staking until they raise it themselves.",
+              "",
+              "0 is a legal value meaning \"nothing may be staked\" — the meter can never pass. There",
+              "is no settings-time bound against protocol params: the per-shard protocol cap",
+              "(`param::MAX_PER_ROUND_AMOUNT`) applies to each supplied amount at deploy time, where",
+              "it belongs; this field is a cross-shard TOTAL and the two are not comparable."
             ],
             "type": "u64"
           },
           {
             "name": "tile_count",
             "docs": [
-              "The ONLY strategy choice: 5 | 9 | 21."
+              "ABANDONED — tile choice is supplied per deploy as `DeployItem.tile_mask`."
             ],
             "type": "u8"
           },
           {
             "name": "run_rounds",
             "docs": [
-              "**How many rounds to play, counted from the first one actually played.** 0 = run until",
-              "the funds or the stop-level end it. Measured against `rounds_played` below.",
-              "",
-              "Renamed from `run_until_round`, which held an ABSOLUTE board round id and was labelled",
-              "in the UI as a count. The board is past #10,000, so a user asking for \"100 rounds\" wrote",
-              "100, the check `round_id > 100` was true immediately, and they were skipped forever",
-              "without ever deploying once. The rename is the fix's safety net: `encodeIx` throws on a",
-              "missing struct field, so any client still sending the old name fails loudly instead of",
-              "writing a number that now means something else."
+              "ABANDONED — session length is operator policy, counted in the crank's diary."
             ],
             "type": "u32"
           },
           {
             "name": "when_funds_low",
+            "docs": [
+              "ABANDONED — funds-low behavior (stop vs keep-running shrink) is crank sizing policy."
+            ],
             "type": "u8"
           },
           {
             "name": "max_per_tile",
+            "docs": [
+              "ABANDONED — per-tile sizing is operator mask/amount policy."
+            ],
             "type": "u64"
           },
           {
             "name": "min_bet",
+            "docs": [
+              "ABANDONED — minimum-bet preference is crank sizing policy (the PROTOCOL minimum,",
+              "`param::MIN_DEPLOY_AMOUNT`, is still enforced on every supplied amount)."
+            ],
             "type": "u64"
           },
           {
             "name": "stop_level",
+            "docs": [
+              "ABANDONED — the stop-level reserve is crank sizing policy."
+            ],
             "type": "u64"
           },
           {
             "name": "auto_reload",
             "docs": [
-              "**true** (the default): winnings that come back land in the shard's ATA and are staked",
-              "again next round, so the position recycles until the house's cut has consumed it.",
-              "",
-              "**false**: winnings are still CLAIMED - `claim_usd` runs for everyone, always, and money",
-              "owed must never be left sitting in Sat Rush - but they are not staked. The position",
-              "spends what was deposited and then stops, and everything it won is withdrawable.",
-              "",
-              "Enforced by `stake_allowance` below, not by skipping the claim. Claiming and staking are",
-              "separate decisions, and only the second one is the user's preference here."
+              "ABANDONED — the winnings-recycling preference is operator policy backed by the",
+              "crank's own deposit/stake ledger. The old on-chain mechanism (`stake_allowance`",
+              "below) stopped being debited at the upgrade and cannot enforce it anymore."
             ],
             "type": "bool"
           },
           {
             "name": "min_strike_pot_usd",
             "docs": [
-              "**The bottom of the Sat Strike range: mine only once the pot is worth at least this**,",
-              "in USDC micros. 0 means \"no bottom\".",
-              "",
-              "Paired with `max_strike_pot_usd` below, the two form a RANGE, and each end is independent:",
-              "",
-              "```text",
-              "min 0  max 0    no gate at all — mine every round. THE DEFAULT.",
-              "min x  max 0    mine once the pot reaches x, and from then on",
-              "min 0  max y    mine while the pot is still under y, then stop",
-              "min x  max y    mine only while x <= pot <= y   (both ends inclusive)",
-              "```",
-              "",
-              "Inclusive at both ends because a user typing a number means \"at this value, yes\" — the",
-              "UI says \"at least\" and \"at most\", and an exclusive test would make both of those lie.",
-              "",
-              "The pot is two currencies and nothing on chain publishes a BTC price, so the sats leg is",
-              "valued using Sat Rush's OWN most recent swap — `swap_round_stake` converts USDC to cbBTC",
-              "through Jupiter every round and records both sides on the previous `Round`. That ratio is",
-              "a market rate: measured across ten consecutive rounds it held to 0.21%, and it agreed",
-              "with an independent swap transaction to 0.24%. See `satrush::strike_pot_usd`.",
-              "",
-              "Both the `Board` and the reference round are DERIVED by `wk_deploy_batch`, never trusted,",
-              "so an operator cannot fake a fat pot to open somebody's gate or a thin one to hold them",
-              "out of rounds they asked to be in.",
-              "",
-              "**This costs streak, and the cost is not small.** Sitting out a round resets the streak",
-              "multiplier to 1, and rebuilding it takes ~100 rounds; the strike leg is worth about",
-              "+/-0.5% of a deploy. On expected value a gated position loses to an ungated one. It is",
-              "here because it is the user's money and some people are playing for the jackpot rather",
-              "than the grind, but the UI has to say the streak part out loud or the setting is a trap."
+              "ABANDONED — the Sat Strike range (mine only while the pot is inside [min, max]) is",
+              "operator policy: the crank prices the pot off-chain and simply does not include a",
+              "gated shard in the batch. The on-chain valuation machinery this pair drove",
+              "(`strike_pot_usd`, the derived previous-round account) left with it."
             ],
             "type": "u64"
           },
           {
             "name": "max_strike_pot_usd",
             "docs": [
-              "**The top of the Sat Strike range: stop mining once the pot is worth more than this**,",
-              "in USDC micros. 0 (the default) means \"no top\" — see `min_strike_pot_usd` for the table.",
-              "",
-              "A ceiling reads backwards at first, since the pot only grows and a bigger jackpot is",
-              "strictly better for whoever is on the winning tile when it fires. The reason it is a real",
-              "strategy rather than a confusion is **crowding**: a fat pot pulls in more miners, and more",
-              "miners shrink a winner's pro-rata share of both the round pot and the strike itself. So",
-              "\"get out before the crowd arrives\" is coherent, and it is the sentence the UI has to say —",
-              "a user who sets a ceiling for any other reason is paying streak for nothing.",
-              "",
-              "Enforced exactly like the floor: valued from Sat Rush's own last swap, both accounts",
-              "derived, and an unvaluable pot is `StrikePotUnknown` rather than a silent pass or block."
+              "ABANDONED — the other end of the strike range; see `min_strike_pot_usd`."
             ],
             "type": "u64"
           },
           {
             "name": "last_round",
             "docs": [
-              "The round `staked_in_round` refers to. A different `round_id` resets the budget."
+              "The round `staked_in_round` refers to. A different `round_id` resets the meter."
             ],
             "type": "u32"
           },
           {
             "name": "staked_in_round",
             "docs": [
-              "Staked so far this round, across every wallet."
+              "Staked so far this round, across every wallet. Compared against `max_per_round`",
+              "before every CPI; an item that would breach it is skipped, never clamped."
             ],
             "type": "u64"
           },
           {
             "name": "rounds_played",
             "docs": [
-              "Rounds this position has actually DEPLOYED in - what `run_rounds` is measured against.",
-              "",
-              "**Rounds played, not rounds elapsed, and that distinction is the point.** Counting board",
-              "rounds would mean an operator outage silently spends the user's run: thirty minutes down",
-              "is roughly twenty-six rounds they paid for and never got. This counter only moves when a",
-              "deploy actually lands, so our downtime costs them time and never rounds.",
-              "",
-              "Incremented once per ROUND, not once per wallet - the `last_round != round_id` test is",
-              "what distinguishes \"first wallet of a new round\" from \"the other eight\", and it is the",
-              "same test `staked_in_round` already relies on.",
-              "",
-              "Reset by `update_deployer` when the user changes `run_rounds`, and when a finished run",
-              "is re-saved. Both are needed: without the second, someone who ran their 100 rounds and",
-              "asked for 100 more would save the identical number, nothing would change, and they would",
-              "sit finished forever."
+              "ABANDONED — rounds-deployed counter for the old on-chain `run_rounds` gate. Frozen at",
+              "its pre-upgrade value (`wk_deploy_batch` no longer increments it); session length is",
+              "counted in the crank's diary. Do not read it as current."
             ],
             "type": "u32"
           },
           {
             "name": "stake_allowance",
             "docs": [
-              "The lifetime stake budget - what makes `auto_reload = false` mean anything.",
-              "",
-              "A shard's USDC ATA is its balance; there is no ledger, so deposited principal and",
-              "claimed winnings are the same fungible tokens in the same account and CANNOT be told",
-              "apart by looking. Without a counter, \"do not re-bet my winnings\" is unimplementable -",
-              "which is why the flag sat unread. This is that counter, and it is the whole mechanism:",
-              "",
-              "```text",
-              "deposit_balance   +=  amount deposited",
-              "wk_deploy_batch   -=  amount staked     (saturating; always, whatever the flag says)",
-              "auto_reload=false ->  plan_deploy refuses to stake more than what is left",
-              "```",
-              "",
-              "The guarantee it buys, stated exactly: **with `auto_reload` false, the lifetime total",
-              "staked never exceeds the lifetime total DEPOSITED.** Since every dollar beyond your",
-              "deposits is by definition a winning, that is \"your winnings are never re-bet\".",
-              "",
-              "Read the guarantee literally. Withdrawing does NOT credit the counter back,",
-              "deliberately: the withdraw path stays exactly as it is, with no new accounts and no new",
-              "way to fail, because a blocked exit is a far worse outcome than a loose budget. So",
-              "depositing $10k, withdrawing it unstaked, and depositing it again really does authorise",
-              "$20k of staking - you asked to stake $10k twice. The invariant holds; it is denominated",
-              "in deposits.",
-              "",
-              "Maintained even while `auto_reload` is true, so that flipping the switch off mid-run is",
-              "safe rather than generous: a position that has already recycled its principal has no",
-              "budget left and stops, instead of being handed a fresh one out of its winnings."
+              "ABANDONED as an enforcement mechanism — the lifetime stake budget that made",
+              "`auto_reload = false` mean something on chain. `wk_deploy_batch` no longer debits it,",
+              "so it can no longer bound anything; the reload preference is enforced by the crank's",
+              "own deposit/stake ledger. `deposit_balance` still CREDITS it (harmless, and it keeps",
+              "`WkDeposited.stake_allowance` meaning what it always meant), so the value reads as",
+              "\"lifetime deposits minus pre-upgrade stakes\" — history, not a budget."
             ],
             "type": "u64"
           },
@@ -3521,60 +3545,34 @@
           {
             "name": "btc_share_bps",
             "docs": [
-              "**The user's fixed share of every ticket buy routed to the 1 BTC draw, in bps.**",
-              "0 (the default) = the pure overflow logic — epoch to the knee, remainder to 1 BTC —",
-              "byte-for-byte as before this field existed. Set, it is a GUARANTEE TO THE JACKPOT and",
-              "never a guarantee to the epoch leg: the share comes off the top first, the remainder",
-              "flows through the normal knee-capped epoch logic, and epoch overflow still spills to",
-              "1 BTC — so effective jackpot share is >= what was asked, and no mode exists that forces",
-              "buying epoch tickets past the knee (those are provably worthless: one prize per wallet,",
-              "the winner's whole block leaves the urn). 10_000 = a per-user all-jackpot switch.",
-              "",
-              "Why a user would set it: the epoch knee is a per-wallet toll (see `plan_tickets`), and",
-              "below ~$3,700 of deploys per epoch a wallet never spills over — this field is the ONLY",
-              "way a small player holds jackpot entries at all. USER-owned: it rides the user branch of",
-              "`update_deployer` like every other money preference; an operator can never redirect it.",
-              "",
-              "**The first carve from the launch reserve.** Placed here — after `bump`, in front of",
-              "what remains of `reserved` — because that IS the carve rule, exercised once while it is",
-              "still cheap: `LEN` did not move, no filter changed, every earlier offset held."
+              "ABANDONED — the user's fixed jackpot share of every ticket buy, in bps. The",
+              "epoch/1-BTC split is operator ticket policy now; the crank seeded this value into its",
+              "policy store at cutover. (Historically the first carve from the launch reserve, which",
+              "is why it sits after `bump`.)"
             ],
             "type": "u16"
           },
           {
             "name": "epoch_units_bought",
             "docs": [
-              "Lifetime hashrate UNITS this position has spent on epoch tickets. Together with",
-              "`btc_units_bought` below, this is what makes the jackpot ratio a real guarantee instead",
-              "of a per-buy rounding accident: the epoch leg is bounded by",
-              "`(1 - r) x (epoch + btc + available) - epoch`, which (a) floors to zero the moment the",
-              "epoch side has its full share — so a missed 1 BTC sweep cannot erode the reservation on",
-              "the next pass — and (b) lets 1-ticket dribble buys ACCUMULATE toward the share instead",
-              "of `floor(1 x r)` zeroing it forever, which is how the first implementation quietly",
-              "delivered 0% to exactly the small users the feature exists for.",
-              "",
-              "Lifetime rather than per-iteration on purpose: no iteration id to track, no reset",
-              "races. A user who changes `btc_share_bps` gets the new share applied to FUTURE flow —",
-              "implemented, not just asserted: `apply()` zeroes both counters on any ratio change",
-              "(including to and from 0), because carrying the old ledger into a new ratio would",
-              "re-target the entire lifetime at it. Maintained by the two ticket handlers, only for",
-              "users with a nonzero ratio; ratio-0 positions never pay the serialization cost."
+              "ABANDONED — the flow ledger that made the jackpot ratio a cumulative guarantee.",
+              "Frozen at its pre-upgrade value (the ticket handlers no longer write it)."
             ],
             "type": "u64"
           },
           {
             "name": "btc_units_bought",
             "docs": [
-              "Lifetime hashrate units spent on 1 BTC tickets — the other half of the flow ledger."
+              "ABANDONED — the other half of the frozen flow ledger."
             ],
             "type": "u64"
           },
           {
             "name": "user_flags",
             "docs": [
-              "**The user's own switches** — see the `user_flag` module for each bit's exact meaning.",
-              "Written ONLY by `set_user_flags`, which is gated on the manager authority, so an",
-              "operator can never pause a user's mining or hold their ticket buying.",
+              "**The user's own switches** — see the `user_flag` module for each bit's exact meaning",
+              "(and which bits the program still reads). Written ONLY by `set_user_flags`, which is",
+              "gated on the manager authority, so an operator can never move a user's switches.",
               "",
               "The fourth carve from the launch reserve, and the first one that is deliberately a bit",
               "field rather than a named field: switches added here later cost enforcement code and",
@@ -3655,14 +3653,17 @@
           {
             "name": "per_round_amount",
             "docs": [
-              "The TOTAL staked per round across every wallet, NOT the amount per wallet."
+              "**Lands in `Deployer.max_per_round`**: the most USDC this position may stake per",
+              "round, TOTAL across every wallet. The wire field keeps its historical name so every",
+              "live client's create/update keeps decoding byte-for-byte — the recorded onboarding",
+              "transactions replayed in test_deploy_batch.rs are the proof that matters."
             ],
             "type": "u64"
           },
           {
             "name": "shard_count",
             "docs": [
-              "How many wallets to split it across. Clamped to what the bet can legally afford."
+              "How many wallets to run. Bounded by `max_shards` and the 21-wallet hard cap only."
             ],
             "type": "u16"
           },
@@ -3676,25 +3677,14 @@
           },
           {
             "name": "tile_count",
-            "docs": [
-              "The ONLY strategy choice. 5 / 9 / 21 in the UI; the program accepts anything the",
-              "config's min/max allows, so we can widen the menu without an upgrade."
-            ],
             "type": "u8"
           },
           {
             "name": "run_rounds",
-            "docs": [
-              "**How many rounds to play**, counted from the first round actually deployed. 0 = open",
-              "ended. Was `run_until_round`, an absolute board round id — see `Deployer::run_rounds`."
-            ],
             "type": "u32"
           },
           {
             "name": "when_funds_low",
-            "docs": [
-              "0 = STOP (default), 1 = KEEP RUNNING to defend the streak."
-            ],
             "type": "u8"
           },
           {
@@ -3715,27 +3705,14 @@
           },
           {
             "name": "min_strike_pot_usd",
-            "docs": [
-              "**The bottom of the Sat Strike range**, in USDC micros. 0 means \"no bottom\".",
-              "See `Deployer::min_strike_pot_usd` for the four combinations."
-            ],
             "type": "u64"
           },
           {
             "name": "max_strike_pot_usd",
-            "docs": [
-              "**The top of the Sat Strike range**, in USDC micros. 0 (the default) means \"no top\"."
-            ],
             "type": "u64"
           },
           {
             "name": "btc_share_bps",
-            "docs": [
-              "Fixed share of every ticket buy routed to the 1 BTC draw, in bps. 0 = the overflow",
-              "default. A guarantee to the JACKPOT, never to the epoch leg — see",
-              "`Deployer::btc_share_bps` for the exact semantics and why the epoch side stays",
-              "knee-capped."
-            ],
             "type": "u16"
           }
         ]
