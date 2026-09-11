@@ -100,3 +100,87 @@ test('the settings wire shape survived v2 byte for byte', () => {
   assert.equal(s.type.fields.at(-1).name, 'btc_share_bps');
   assert.equal(wk.maxPerRound.deployerFieldOffset, 107);
 });
+
+test('Sat Rush v2 claim surfaces publish every shared and per-user account in wire order', () => {
+  const sats = ix('wk_claim_sats_batch');
+  assert.deepEqual(sats.discriminator, anchorDiscriminator('global', 'wk_claim_sats_batch'));
+  assert.deepEqual(sats.args.map((a) => a.name), ['auth_ids']);
+  assert.deepEqual(sats.accounts.map((a) => a.name), [
+    'crank',
+    'config',
+    'btc_mint',
+    'token_mint',
+    'satrush_config',
+    'sats_vault',
+    'token_vault',
+    'sats_vault_btc_ata',
+    'token_vault_token_ata',
+    'event_authority',
+    'satrush_program',
+    'token_program',
+    'associated_token_program',
+    'system_program',
+  ]);
+  assert.deepEqual(wk.remainingAccounts.wk_claim_sats_batch.perUser, [5, 6]);
+  assert.deepEqual(wk.remainingAccounts.wk_claim_sats_batch.order, [
+    'manager',
+    'wk_auth',
+    'miner',
+    'btc_ata',
+    'token_ata',
+    'deployer',
+  ]);
+
+  const rush = ix('wk_claim_token_batch');
+  assert.ok(rush, 'wk_claim_token_batch missing');
+  assert.deepEqual(rush.discriminator, anchorDiscriminator('global', 'wk_claim_token_batch'));
+  assert.deepEqual(rush.args.map((a) => a.name), ['auth_ids']);
+  assert.deepEqual(rush.accounts.map((a) => a.name), [
+    'crank',
+    'config',
+    'token_mint',
+    'btc_mint',
+    'satrush_config',
+    'token_vault',
+    'sats_vault',
+    'token_vault_token_ata',
+    'sats_vault_btc_ata',
+    'event_authority',
+    'satrush_program',
+    'token_program',
+    'associated_token_program',
+    'system_program',
+  ]);
+  assert.deepEqual(wk.remainingAccounts.wk_claim_token_batch.perUser, [5]);
+  assert.deepEqual(wk.remainingAccounts.wk_claim_token_batch.order, [
+    'manager',
+    'wk_auth',
+    'miner',
+    'token_ata',
+    'btc_ata',
+  ]);
+});
+
+test('Sat Rush v2 account lengths stay strict and include the RUSH vault', () => {
+  assert.deepEqual(constants.satrush.sizes, {
+    Board: 152,
+    Miner: 201,
+    PublicDeployment: 136,
+    Round: 470,
+    EpochVaultIteration: 1036,
+    EpochVaultEntry: 89,
+    EpochVaultPage: 1347,
+    EpochVault: 95,
+    OneBtcVault: 79,
+    OneBtcVaultIteration: 104,
+    OneBtcVaultEntry: 94,
+    SatsVault: 67,
+    TokenVault: 67,
+    SatrushConfig: 328,
+    Treasury: 104,
+    PublicAutomation: 129,
+  });
+  assert.deepEqual(constants.satrush.seeds.tokenVault, [
+    { kind: 'literal', value: 'token_vault' },
+  ]);
+});

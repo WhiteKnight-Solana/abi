@@ -229,14 +229,14 @@ test('the published claim_sats stride is self-consistent', () => {
     );
   }
 
-  assert.deepEqual(c.perUser, [4, 5], 'four or five accounts per user, in ascending order');
+  assert.deepEqual(c.perUser, [5, 6], 'five or six accounts per user, in ascending order');
   // `order` must describe the LONGEST accepted shape, and the optional tail must start exactly
   // where the shorter shape ends — otherwise a client building the five-account form has no
   // way to know which name the extra account takes.
   assert.equal(c.order.length, Math.max(...c.perUser), 'order must name every account of the longest shape');
   assert.equal(c.optionalFrom, Math.min(...c.perUser), 'the optional tail begins where the shortest shape ends');
   assert.equal(new Set(c.order).size, c.order.length, 'account names must be distinct');
-  assert.equal(c.order[c.optionalFrom], 'deployer', 'the fifth account is the Deployer that carries user_flags');
+  assert.equal(c.order[c.optionalFrom], 'deployer', 'the sixth account is the Deployer that carries user_flags');
 
   // The two refusals are quoted by name, so they must be real errors this program can throw.
   // A typo here sends a client hunting for a code that does not exist.
@@ -248,7 +248,7 @@ test('the published claim_sats stride is self-consistent', () => {
   }
 });
 
-test('the fifth account is what makes HOLD_SATS enforceable, and the IDL agrees it is not named', () => {
+test('the sixth account is what makes HOLD_SATS enforceable, and the IDL agrees it is not named', () => {
   // The flag lives on Deployer. If some future edit adds `deployer` to the instruction's FIXED
   // account list, the fifth remaining account becomes redundant and this published shape becomes
   // actively misleading — so tie the two together rather than letting them drift apart.

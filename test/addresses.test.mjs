@@ -73,7 +73,7 @@ test('the published mainnet id is the deployed program', () => {
 
 test('third-party addresses agree across clusters', () => {
   // Sat Rush and the mints are mainnet facts; localnet clones them, so a disagreement is a typo.
-  for (const name of ['satrushProgram', 'usdcMint', 'cbbtcMint', 'tokenProgram', 'associatedTokenProgram']) {
+  for (const name of ['satrushProgram', 'usdcMint', 'cbbtcMint', 'rushMint', 'tokenProgram', 'associatedTokenProgram']) {
     assert.equal(clusters.localnet[name], clusters.mainnet[name], name);
   }
 });
@@ -82,4 +82,5 @@ test('the known third-party anchors are exactly the published ones', () => {
   assert.equal(clusters.mainnet.satrushProgram, 'satRushGBRY2vgapeTAkoxz26vL2cYqyPi6CnBj7Tco');
   assert.equal(clusters.mainnet.usdcMint, 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
   assert.equal(clusters.mainnet.cbbtcMint, 'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij');
+  assert.equal(clusters.mainnet.rushMint, 'SATqS9DYpLQsM2z51P4QCoqJRHa5wboV4qjJerJRUSH');
 });

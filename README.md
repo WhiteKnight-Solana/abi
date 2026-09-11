@@ -5,7 +5,7 @@ The canonical, versioned interface of the WhiteKnight program — an autominer f
 source of truth for *what the program looks like on the wire*: its IDL, its addresses, and the
 byte-exact layout facts an IDL cannot carry.
 
-> **Status: live on mainnet since 2026-08-15.** The program id is
+> **Status: live on mainnet; Sat Rush v2 upgrade finalized 2026-09-11 at slot 446158871.** The program id is
 > **`WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS`**, published in `addresses.json` and
 > test-pinned. Verify it yourself rather than trusting this file:
 >
@@ -19,15 +19,15 @@ byte-exact layout facts an IDL cannot carry.
 > the withdraw path, in one transaction with no delay. Deposits are non-custodial *as far as
 > the deployed code goes*, and the deployed code can be changed by that key. A move to a
 > multisig is planned before meaningful TVL; until the on-chain authority says a multisig,
-> assume a single key. The launch bytecode is sha256
-> `8148bccf3b2d415ce54a5d0e93008eb16fab586cf4c164e312c124048f5736dc` over its 654,800 bytes
+> assume a single key. The current deployed bytecode is sha256
+> `4d03c0549dc2ca3b6aaf13bda7b2e99d827ddddb6c1a2a6d78d0abc8fd7c46af` over its 668,576-byte release prefix
 > (`solana program dump` pads with zeros to the allocated length — truncate before hashing).
 
 ## What is in here
 
 | Artifact | Contents |
 | --- | --- |
-| `idl/whiteknight.json` | The Anchor IDL exactly as `anchor build` produced it: 24 instructions, 3 accounts, 22 events, 34 error codes, all discriminators |
+| `idl/whiteknight.json` | The Anchor IDL exactly as `anchor build` produced it: 25 instructions, 3 accounts, 24 events, 35 error codes, all discriminators |
 | `addresses.json` | Per-cluster addresses: the WhiteKnight program, the Sat Rush program, USDC/cbBTC mints, token programs. A `null` means "not on that cluster"; the `pending` list names every null so absence is machine-checked |
 | `constants.json` | What the IDL cannot express: account lengths (`WkConfig` 753, `Manager` 331, `Deployer` 443 — these double as `getProgramAccounts` dataSize filters), PDA seed recipes for both programs, the param/flag tables, and every Sat Rush account size |
 | `MANIFEST.json` | sha256 of each artifact + the program-source commit they were exported from |

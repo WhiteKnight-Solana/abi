@@ -2290,10 +2290,124 @@ export default {
           "name": "btc_mint"
         },
         {
+          "name": "token_mint",
+          "docs": [
+            "RUSH mint, checked against Sat Rush's v2 config in the handler."
+          ]
+        },
+        {
           "name": "satrush_config"
         },
         {
           "name": "sats_vault",
+          "writable": true
+        },
+        {
+          "name": "token_vault",
+          "writable": true
+        },
+        {
+          "name": "sats_vault_btc_ata",
+          "writable": true
+        },
+        {
+          "name": "token_vault_token_ata",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "satrush_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wk_claim_token_batch",
+      "docs": [
+        "Burn each shard's Sat Rush v2 token-vault shares and collect the resulting RUSH plus",
+        "any cbBTC/hashrate released by the same claim. The wallet cannot call Sat Rush directly:",
+        "each Miner belongs to our `wk_auth` PDA, so this wrapper supplies the required signature.",
+        "Open to any payer because value only moves into user-controlled shards."
+      ],
+      "discriminator": [
+        125,
+        201,
+        189,
+        76,
+        162,
+        231,
+        77,
+        143
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint",
+          "docs": [
+            "RUSH mint. Its address is checked against Sat Rush's v2 config in the handler."
+          ]
+        },
+        {
+          "name": "btc_mint"
+        },
+        {
+          "name": "satrush_config"
+        },
+        {
+          "name": "token_vault",
+          "writable": true
+        },
+        {
+          "name": "sats_vault",
+          "writable": true
+        },
+        {
+          "name": "token_vault_token_ata",
           "writable": true
         },
         {
@@ -2707,6 +2821,10 @@ export default {
           "writable": true
         },
         {
+          "name": "token_vault",
+          "writable": true
+        },
+        {
           "name": "board_usd_ata",
           "writable": true
         },
@@ -2722,7 +2840,11 @@ export default {
           "name": "event_authority"
         },
         {
-          "name": "satrush_program"
+          "name": "satrush_program",
+          "docs": [
+            "as this same program id, so the outer instruction must grant it writable privilege."
+          ],
+          "writable": true
         },
         {
           "name": "token_program"
@@ -2910,6 +3032,19 @@ export default {
       ]
     },
     {
+      "name": "WkEpochRewardDistributed",
+      "discriminator": [
+        36,
+        179,
+        185,
+        250,
+        153,
+        78,
+        179,
+        132
+      ]
+    },
+    {
       "name": "WkFlagsSet",
       "discriminator": [
         199,
@@ -3050,6 +3185,19 @@ export default {
         157,
         175,
         228
+      ]
+    },
+    {
+      "name": "WkTokenClaimed",
+      "discriminator": [
+        228,
+        38,
+        15,
+        194,
+        41,
+        66,
+        37,
+        151
       ]
     },
     {
@@ -4241,6 +4389,51 @@ export default {
       }
     },
     {
+      "name": "WkEpochRewardDistributed",
+      "docs": [
+        "Sat Rush v2 no longer pays an epoch prize straight to authority-owned ATAs. Its",
+        "`distribute_epoch_reward` credits the winner's Miner/vault balances, which are collected by",
+        "the ordinary USD/sats/token claim paths. These are measured account deltas, not estimates."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "iteration_id",
+            "type": "u32"
+          },
+          {
+            "name": "rank",
+            "type": "u8"
+          },
+          {
+            "name": "unclaimed_usd",
+            "type": "u64"
+          },
+          {
+            "name": "btc_shares",
+            "type": "u64"
+          },
+          {
+            "name": "token_shares",
+            "type": "u64"
+          },
+          {
+            "name": "hashrate",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "WkFlagsSet",
       "docs": [
         "Flags moved — pauses live here, so this is the event that dates every halt and resume."
@@ -4649,6 +4842,62 @@ export default {
             "name": "available_units",
             "docs": [
               "Raw hashrate units, unfloored — the number the threshold is actually compared against."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkTokenClaimed",
+      "docs": [
+        "A Sat Rush v2 token-share claim landed in a user's shard. This is deliberately a new event",
+        "rather than extending `WkClaimed`: changing an existing Anchor event's payload would make",
+        "historical log decoders misread it."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "kind",
+            "docs": [
+              "0 = direct `claim_token`; 1 = RUSH coupled into Sat Rush v2 `claim_sats`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "token_shares",
+            "docs": [
+              "Token-vault shares requested/burned. Shares are not RUSH base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "token_amount",
+            "docs": [
+              "RUSH base units measured in the shard ATA across the CPI."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "btc_amount",
+            "docs": [
+              "cbBTC base units measured across the same CPI. `claim_token` may settle both legs."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "released_hashrate",
+            "docs": [
+              "Locked hashrate released, measured from the Miner rather than estimated."
             ],
             "type": "u64"
           }
