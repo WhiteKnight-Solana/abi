@@ -100,3 +100,8 @@ Zero runtime dependencies, so consumers install nothing through this package. On
 dependency, the program itself, pinned by commit hash from its own repo and read only by
 `sync-check`; the tests run on `node:test` with no install. There is nothing here for a
 supply-chain attack to ride in on.
+
+There is deliberately no `build` script (the generator is `npm run generate`). npm "prepares"
+a git dependency that has a `build`, `prepare`, `prepack` or install script by installing its
+dev dependencies first, so with one every consumer's install would try to fetch the private
+program pin, and fail wherever it has no access to that repo (CI, Render, Vercel).

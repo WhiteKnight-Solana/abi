@@ -26,7 +26,7 @@
     "fixtures/"
   ],
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "generate": "node scripts/build.mjs",
     "check": "node scripts/build.mjs --check",
     "test": "node --test test/",
     "sync-check": "node scripts/sync-check.mjs"
