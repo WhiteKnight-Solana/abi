@@ -54,21 +54,15 @@ export default {
     {
       "name": "close_shard",
       "docs": [
-        "Reclaim the rent a dormant shard is sitting on: closes its two ATAs and returns that",
-        "rent to the user. The USDC ATA's rent really is the user's own (`deposit_balance`,",
-        "`payer = authority`); the cbBTC ATA was created inside a Sat Rush claim CPI with the",
-        "shard PDA as payer — i.e. fronted by the crank-funded float — and returning it anyway is",
-        "deliberate policy: it is bounded, one-shot (~0.002 SOL), and not worth a second code",
-        "path. Refuses while the shard still holds anything, in its ATAs or in its Sat Rush",
-        "`Miner`.",
+        "Reclaim the rent a dormant sub-miner is sitting on: closes its USDC and cbBTC ATAs, and",
+        "its RUSH ATA when one exists, and returns that rent to the owner. Refuses while the",
+        "sub-miner still holds anything: USDC (`ShardHoldsUsd`), cbBTC (`ShardHoldsBtc`), RUSH",
+        "(`SubMinerHoldsRush`), or value inside its Sat Rush `Miner` (`ShardOwedInSatrush`). The",
+        "RUSH mint and account are pinned to Sat Rush's config and the derived ATA.",
         "",
-        "**The shard's own SOL float is deliberately NOT swept.** The crank funds it so Sat Rush",
-        "has a rent payer for the ticket accounts it creates; paying it out would move protocol",
-        "money to the user, and since the crank re-funds on its next pass it would do so on a",
-        "loop. `WkShardClosed` therefore deliberately carries no lamport figure — see",
-        "`handle_close_shard`.",
+        "The sub-miner's own SOL is not moved here: `withdraw_sol` returns it.",
         "",
-        "Leaves `Manager` and `Deployer` alive on purpose — they are what let the shard keep",
+        "Leaves `Manager` and `Deployer` alive on purpose: they are what let the sub-miner keep",
         "signing, and a 1 BTC ticket cannot be proven absent on chain."
       ],
       "discriminator": [
@@ -304,6 +298,19 @@ export default {
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "satrush_config"
+        },
+        {
+          "name": "token_mint",
+          "docs": [
+            "Sat Rush's configured RUSH mint (`satrush_config.token_mint`), checked below."
+          ]
+        },
+        {
+          "name": "wk_auth_token_ata",
+          "writable": true
         }
       ],
       "args": [
@@ -1164,6 +1171,80 @@ export default {
       ]
     },
     {
+      "name": "sweep_sub_miner_sol",
+      "docs": [
+        "The one-time sub-miner SOL sweep. Signed only by the crank key the config names",
+        "(`config.deploy_authority`); every lamport it takes goes to that signer, never to an",
+        "address an argument could name. It sweeps 100% of the SOL of each listed sub-miner that",
+        "holds under `params[17]` USDC and is idle (never mined, or last mined at least",
+        "`params[18]` rounds ago), and keeps the rest with a `WkCollectSkipped` event. Refused",
+        "while either param is 0, and forever once a call with `finish = true` has set",
+        "`sol_sweep_done`, which also opens `withdraw_sol`. A premature `finish` only leaves SOL",
+        "unswept."
+      ],
+      "discriminator": [
+        26,
+        85,
+        36,
+        191,
+        188,
+        79,
+        176,
+        172
+      ],
+      "accounts": [
+        {
+          "name": "crank",
+          "docs": [
+            "The only key that may sweep, and the only place the swept SOL goes."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "board"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_ids",
+          "type": {
+            "vec": "u64"
+          }
+        },
+        {
+          "name": "finish",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "transfer_admin",
       "discriminator": [
         42,
@@ -1614,6 +1695,134 @@ export default {
         {
           "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "auth_id",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_sol",
+      "docs": [
+        "A sub-miner's SOL back to the Manager's current owner. `amount = 0` withdraws",
+        "everything; what stays must be 0 or at least the rent-exempt minimum. Refused with",
+        "`SolWithdrawalsLocked` until the one-time sub-miner SOL sweep has set",
+        "`WkConfig::sol_sweep_done`, which nothing on this build can do. Deposits need no",
+        "instruction: the owner sends a plain System transfer to the sub-miner PDA."
+      ],
+      "discriminator": [
+        145,
+        131,
+        74,
+        136,
+        65,
+        137,
+        42,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "manager"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "manager",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  109,
+                  97,
+                  110,
+                  97,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager.seed_authority",
+                "account": "Manager"
+              },
+              {
+                "kind": "account",
+                "path": "manager.index",
+                "account": "Manager"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wk_auth",
+          "docs": [
+            "The sub-miner: data-less and System-owned; the seeds prove it is this Manager's."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  107,
+                  45,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "manager"
+              },
+              {
+                "kind": "arg",
+                "path": "auth_id"
+              }
+            ]
+          }
         },
         {
           "name": "system_program",
@@ -2856,6 +3065,20 @@ export default {
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_mint",
+          "docs": [
+            "Sat Rush's configured RUSH mint (`satrush_config.token_mint`), checked below."
+          ]
+        },
+        {
+          "name": "board_token_ata",
+          "writable": true
+        },
+        {
+          "name": "token_vault_token_ata",
+          "writable": true
         }
       ],
       "args": [
@@ -3149,6 +3372,45 @@ export default {
       ]
     },
     {
+      "name": "WkSolSweepFinished",
+      "discriminator": [
+        164,
+        119,
+        18,
+        159,
+        125,
+        136,
+        3,
+        48
+      ]
+    },
+    {
+      "name": "WkSolWithdrawn",
+      "discriminator": [
+        116,
+        208,
+        180,
+        120,
+        186,
+        68,
+        173,
+        164
+      ]
+    },
+    {
+      "name": "WkSubMinerSolSwept",
+      "discriminator": [
+        249,
+        169,
+        252,
+        243,
+        16,
+        121,
+        181,
+        14
+      ]
+    },
+    {
       "name": "WkTicketClosed",
       "discriminator": [
         71,
@@ -3402,6 +3664,41 @@ export default {
       "code": 6034,
       "name": "DuplicateAuthId",
       "msg": "the same shard appears twice in one deploy batch"
+    },
+    {
+      "code": 6035,
+      "name": "SolWithdrawalsLocked",
+      "msg": "SOL withdrawals open after the one-time sub-miner SOL sweep"
+    },
+    {
+      "code": 6036,
+      "name": "InsufficientSolBalance",
+      "msg": "the sub-miner holds less SOL than that"
+    },
+    {
+      "code": 6037,
+      "name": "SolBelowRentExempt",
+      "msg": "that would leave the sub-miner below its rent-exempt minimum; withdraw all or leave more"
+    },
+    {
+      "code": 6038,
+      "name": "SubMinerHoldsRush",
+      "msg": "sub-miner still holds RUSH; withdraw it before closing"
+    },
+    {
+      "code": 6039,
+      "name": "SweepParamsUnset",
+      "msg": "the sweep's USDC limit or idle window is not set (params 17 and 18)"
+    },
+    {
+      "code": 6040,
+      "name": "SweepAlreadyDone",
+      "msg": "the one-time sub-miner SOL sweep has already finished"
+    },
+    {
+      "code": 6041,
+      "name": "NotSweepAuthority",
+      "msg": "signer is not the config's deploy authority, the only key that may sweep"
     }
   ],
   "types": [
@@ -4116,9 +4413,19 @@ export default {
             "type": "u8"
           },
           {
+            "name": "sol_sweep_done",
+            "docs": [
+              "Byte 497, carved from the front of `reserved`: 1 once the one-time sub-miner SOL sweep",
+              "has finished. Set only by the one-time sweep; `set_flags` cannot reach it (it is not a",
+              "flag bit); `withdraw_sol` refuses until it is 1. Nothing seeds it, so it reads 0 on the",
+              "live config, and no build may ever reset it."
+            ],
+            "type": "u8"
+          },
+          {
             "name": "reserved",
             "docs": [
-              "**Post-mainnet expansion room.** `params` (15 free u64 slots) and `flags` (60 free bits)",
+              "**Post-mainnet expansion room.** `params` (13 free u64 slots) and `flags` (60 free bits)",
               "absorb every future NUMBER and SWITCH without an upgrade — but not a future named",
               "pubkey (a second treasury, a new mint, a registry). This block absorbs that: carve a",
               "field from its front, and `LEN` — which both off-chain readers length-check — never",
@@ -4128,7 +4435,7 @@ export default {
             "type": {
               "array": [
                 "u8",
-                256
+                255
               ]
             }
           }
@@ -4668,6 +4975,98 @@ export default {
           },
           {
             "name": "auth_id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkSolSweepFinished",
+      "docs": [
+        "The one-time sub-miner SOL sweep finished: `sol_sweep_done` is 1 from here on, so",
+        "`withdraw_sol` is open for every owner and the sweep can never run again."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "crank",
+            "type": "pubkey"
+          },
+          {
+            "name": "board_round",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkSolWithdrawn",
+      "docs": [
+        "SOL out of a sub-miner: the native mirror of `WkWithdrawn`, emitted by `withdraw_sol`.",
+        "`authority` is the Manager's current owner, who receives it."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "remaining",
+            "docs": [
+              "What stays on the sub-miner: 0, or at least its rent-exempt minimum."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WkSubMinerSolSwept",
+      "docs": [
+        "The one-time sub-miner SOL sweep took this sub-miner's SOL, all of it, to the crank key the",
+        "config names. A 0-lamport sub-miner is still reported, so every one in a batch leaves a",
+        "trace. `last_mined_round` is 0 when Sat Rush has no Miner for it (it never mined)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "auth_id",
+            "type": "u64"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "board_round",
+            "type": "u32"
+          },
+          {
+            "name": "last_mined_round",
+            "type": "u32"
+          },
+          {
+            "name": "usdc_balance",
             "type": "u64"
           }
         ]

@@ -73,11 +73,13 @@ test('the deploy batch dropped previous_round and holds at 13 shared accounts', 
   assert.ok(13 + 2 + 5 * 9 <= 64, 'nine users must still fit the account-lock budget');
 });
 
-test('DuplicateAuthId is the appended error and nothing was renumbered', () => {
+test('the sub-miner SOL errors are appended after DuplicateAuthId and nothing was renumbered', () => {
   const errs = idl.errors;
-  assert.equal(errs.at(-1).code, 6034);
-  assert.equal(errs.at(-1).name, 'DuplicateAuthId');
-  // Codes are 6000 + declaration index, dense — a deletion anywhere would shift the tail.
+  const at = (i) => [errs[i].code, errs[i].name];
+  assert.deepEqual(at(34), [6034, 'DuplicateAuthId']);
+  assert.deepEqual(at(38), [6038, 'SubMinerHoldsRush']);
+  assert.deepEqual([errs.at(-1).code, errs.at(-1).name], [6041, 'NotSweepAuthority']);
+  // Codes are 6000 + declaration index, dense: a deletion anywhere would shift the tail.
   errs.forEach((e, i) => assert.equal(e.code, 6000 + i, `${e.name} renumbered`));
 });
 
@@ -182,5 +184,115 @@ test('Sat Rush v2 account lengths stay strict and include the RUSH vault', () =>
   });
   assert.deepEqual(constants.satrush.seeds.tokenVault, [
     { kind: 'literal', value: 'token_vault' },
+  ]);
+});
+
+// ---------------------------------------------------------------- the sub-miner SOL release
+
+/** `[name, writable, signer]` for each named account, in wire order. */
+const shape = (name) => ix(name).accounts.map((a) => [a.name, !!a.writable, !!a.signer]);
+
+test('close_shard appends the RUSH leg after system_program, its ATA writable', () => {
+  assert.deepEqual(shape('close_shard'), [
+    ['authority', true, true],
+    ['config', false, false],
+    ['manager', false, false],
+    ['wk_auth', true, false],
+    ['wk_auth_usd_ata', true, false],
+    ['wk_auth_btc_ata', true, false],
+    ['usd_mint', false, false],
+    ['btc_mint', false, false],
+    ['miner', false, false],
+    ['token_program', false, false],
+    ['system_program', false, false],
+    ['satrush_config', false, false],
+    ['token_mint', false, false],
+    ['wk_auth_token_ata', true, false],
+  ]);
+});
+
+test('wk_settle_batch carries the 21 named accounts in wire order, the RUSH leg last', () => {
+  const s = shape('wk_settle_batch');
+  assert.equal(s.length, 21);
+  assert.deepEqual(s.map(([n]) => n), [
+    'crank', 'config', 'usd_mint', 'btc_mint', 'rent_recipient', 'satrush_config', 'round',
+    'board', 'sats_vault', 'token_vault', 'board_usd_ata', 'board_btc_ata', 'sats_vault_btc_ata',
+    'event_authority', 'satrush_program', 'token_program', 'associated_token_program',
+    'system_program', 'token_mint', 'board_token_ata', 'token_vault_token_ata',
+  ]);
+  assert.deepEqual(s.slice(-3), [
+    ['token_mint', false, false],
+    ['board_token_ata', true, false],
+    ['token_vault_token_ata', true, false],
+  ]);
+});
+
+test('withdraw_sol: owner-signed, no Deployer, (auth_id, amount)', () => {
+  const w = ix('withdraw_sol');
+  assert.deepEqual(w.discriminator, anchorDiscriminator('global', 'withdraw_sol'));
+  assert.deepEqual(w.args, [{ name: 'auth_id', type: 'u64' }, { name: 'amount', type: 'u64' }]);
+  assert.deepEqual(shape('withdraw_sol'), [
+    ['authority', true, true],
+    ['config', false, false],
+    ['manager', false, false],
+    ['wk_auth', true, false],
+    ['system_program', false, false],
+  ]);
+});
+
+test('sweep_sub_miner_sol: crank-signed, config writable, (auth_ids, finish)', () => {
+  const s = ix('sweep_sub_miner_sol');
+  assert.deepEqual(s.discriminator, anchorDiscriminator('global', 'sweep_sub_miner_sol'));
+  assert.deepEqual(s.args, [{ name: 'auth_ids', type: { vec: 'u64' } }, { name: 'finish', type: 'bool' }]);
+  assert.deepEqual(shape('sweep_sub_miner_sol'), [
+    ['crank', true, true],
+    ['config', true, false],
+    ['board', false, false],
+    ['system_program', false, false],
+  ]);
+});
+
+test('the sub-miner SOL events carry the published fields', () => {
+  const fields = (name) => types.get(name).type.fields.map((f) => [f.name, f.type]);
+  assert.deepEqual(fields('WkSolWithdrawn'), [
+    ['manager', 'pubkey'], ['auth_id', 'u64'], ['authority', 'pubkey'], ['amount', 'u64'], ['remaining', 'u64'],
+  ]);
+  assert.deepEqual(fields('WkSubMinerSolSwept'), [
+    ['manager', 'pubkey'], ['auth_id', 'u64'], ['lamports', 'u64'], ['board_round', 'u32'],
+    ['last_mined_round', 'u32'], ['usdc_balance', 'u64'],
+  ]);
+  assert.deepEqual(fields('WkSolSweepFinished'), [['crank', 'pubkey'], ['board_round', 'u32']]);
+  for (const name of ['WkSolWithdrawn', 'WkSubMinerSolSwept', 'WkSolSweepFinished']) {
+    assert.ok(idl.events.some((e) => e.name === name), `${name} is not an event`);
+  }
+});
+
+test('the two sweep params are named at 17 and 18', () => {
+  assert.equal(wk.params.SWEEP_MAX_USDC_MICROS, 17);
+  assert.equal(wk.params.SWEEP_IDLE_ROUNDS, 18);
+});
+
+test('the settle and sweep strides are self-consistent', () => {
+  const idlErrors = new Set(idl.errors.map((e) => e.name));
+  for (const [name, stride] of [['wk_settle_batch', 7], ['sweep_sub_miner_sol', 4]]) {
+    const r = wk.remainingAccounts[name];
+    assert.ok(r, `${name} stride is not published`);
+    assert.deepEqual(r.perUser, [stride], `${name}: ${stride} accounts per entry`);
+    assert.equal(r.order.length, stride, `${name}: order names every account`);
+    assert.equal(new Set(r.order).size, stride, `${name}: account names are distinct`);
+    for (const named of Object.values(r.errors)) {
+      assert.ok(idlErrors.has(named), `${name} quotes error ${named}, which this IDL does not define`);
+    }
+  }
+  assert.deepEqual(wk.remainingAccounts.sweep_sub_miner_sol.order, ['manager', 'wk_auth', 'wk_auth_usd_ata', 'miner']);
+});
+
+test('the release bytecode and the sub-miner rent accounts are published', () => {
+  assert.match(wk.wkBytecode.sha256, /^[0-9a-f]{64}$/);
+  assert.ok(Number.isInteger(wk.wkBytecode.bytes) && wk.wkBytecode.bytes > 0);
+  // PublicDeployment and Miner: what a sub-miner's first deploy pays rent for in Sat Rush.
+  assert.deepEqual(wk.subMinerDeployRentBytes, [
+    constants.satrush.sizes.PublicDeployment,
+    constants.satrush.sizes.Miner,
   ]);
 });

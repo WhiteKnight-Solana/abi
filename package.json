@@ -22,7 +22,8 @@
     "idl/",
     "addresses.json",
     "constants.json",
-    "MANIFEST.json"
+    "MANIFEST.json",
+    "fixtures/"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -36,5 +37,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@whiteknight-solana/whiteknight": "github:WhiteKnight-Solana/whiteknight#c334d8dd47f71c63ce5fdfe6ceb3d98699b58f85"
   }
 }

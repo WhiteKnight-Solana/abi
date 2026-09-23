@@ -9,8 +9,8 @@ export default {
       "Deployer": 443
     },
     "reserveWidths": {
-      "_comment": "The launch reserve: zero bytes appended pre-deploy that future fields are carved from, front-first, so accountLens never move. Deployer has had 26 bytes carved (btc_share_bps u16 + epoch_units_bought u64 + btc_units_bought u64 + user_flags u64).",
-      "WkConfig": 256,
+      "_comment": "The launch reserve: zero bytes appended pre-deploy that future fields are carved from, front-first, so accountLens never move. Deployer has had 26 bytes carved (btc_share_bps u16 + epoch_units_bought u64 + btc_units_bought u64 + user_flags u64). WkConfig has had 1 byte carved (sol_sweep_done u8 at byte 497).",
+      "WkConfig": 255,
       "Manager": 256,
       "Deployer": 230
     },
@@ -32,7 +32,9 @@ export default {
       "PLATFORM_BPS_FEE": 13,
       "PLATFORM_FLAT_FEE": 14,
       "CLAIM_SATS_TICKETS": 15,
-      "EPOCH_FLOOR_TICKETS": 16
+      "EPOCH_FLOOR_TICKETS": 16,
+      "SWEEP_MAX_USDC_MICROS": 17,
+      "SWEEP_IDLE_ROUNDS": 18
     },
     "flags": {
       "_comment": "Bit INDICES into WkConfig.flags (u64). The flag value is 1n << index. PAUSED_DEPLOY is an INCIDENT-ONLY deploy halt since v2: it stops money going in while settle/claim/withdraw keep running (withdraw-under-halt is pinned by program test), and it is never a product pause — routine operator maintenance is stopping the crank, and a user pausing themselves is a control-plane row the crank honors.",
@@ -49,7 +51,7 @@ export default {
     },
     "userFlagsOffset": 205,
     "remainingAccounts": {
-      "_comment": "Per-user remaining_accounts, in order, for the batch instructions whose shape the IDL cannot express — an IDL describes named accounts, and these are a repeating run appended after them. Transcribed from claim.rs and pinned by the v2 LiteSVM integration suite against the real Sat Rush v2 bytecode, NOT inferred.",
+      "_comment": "Per-user remaining_accounts, in order, for the batch instructions whose shape the IDL cannot express: an IDL describes named accounts, and these are a repeating run appended after them. Transcribed from claim.rs, settle.rs and sweep.rs and pinned by the v2 LiteSVM integration suite against the real Sat Rush v2 bytecode, NOT inferred.",
       "wk_claim_sats_batch": {
         "_comment": "FIVE or SIX accounts per user. Sat Rush v2 requires both cbBTC and RUSH destination ATAs, so the pre-v2 four-account shape is no longer valid. Six adds the position's Deployer, which carries HOLD_SATS; five is the permissionless force-sweep shape. Any other count is refused with BadRemainingAccounts (6021). A foreign Deployer is refused with BadPda (6003). When the signer is the position authority, HOLD_SATS is deliberately ignored so the owner can force one claim.",
         "perUser": [
@@ -81,6 +83,39 @@ export default {
           "miner",
           "token_ata",
           "btc_ata"
+        ],
+        "errors": {
+          "wrongCount": "BadRemainingAccounts"
+        }
+      },
+      "wk_settle_batch": {
+        "_comment": "Exactly seven accounts per user after the 21 named ones: what Sat Rush's settle_deploy_public needs for that user's deployment. public_automation and automation_usd_ata are derived but never exist (the program never uses Sat Rush's own automation). Any other count is refused with BadRemainingAccounts (6021).",
+        "perUser": [
+          7
+        ],
+        "order": [
+          "manager",
+          "wk_auth",
+          "public_deployment",
+          "miner",
+          "public_automation",
+          "automation_usd_ata",
+          "miner_usd_ata"
+        ],
+        "errors": {
+          "wrongCount": "BadRemainingAccounts"
+        }
+      },
+      "sweep_sub_miner_sol": {
+        "_comment": "Exactly four accounts per sub-miner for the one-time, crank-signed SOL sweep; wk_auth is writable because its lamports move to the signer. Six sub-miners fit one legacy transaction without a lookup table. Any other count is refused with BadRemainingAccounts (6021); a foreign wk_auth, USDC account or Miner fails the whole batch with BadPda (6003).",
+        "perUser": [
+          4
+        ],
+        "order": [
+          "manager",
+          "wk_auth",
+          "wk_auth_usd_ata",
+          "miner"
         ],
         "errors": {
           "wrongCount": "BadRemainingAccounts"
@@ -184,7 +219,15 @@ export default {
     "maxPerRound": {
       "_comment": "v2 reinterprets Deployer byte offset 107 (was per_round_amount, the exact bet the program divided) as max_per_round: the ceiling on the round's TOTAL stake across all the user's shards, enforced by the last_round/staked_in_round meter, skip-never-clamp. The DeployerSettings WIRE field keeps the name per_round_amount for client compatibility and lands in this slot.",
       "deployerFieldOffset": 107
-    }
+    },
+    "wkBytecode": {
+      "sha256": "fd3db487966f6211ce015cd887855d96cbfa5ed0fe3b1a79b45097185da25cd6",
+      "bytes": 699992
+    },
+    "subMinerDeployRentBytes": [
+      136,
+      201
+    ]
   },
   "satrush": {
     "_comment": "Sat Rush is a third-party program WhiteKnight CPIs into. Sizes were verified against live mainnet accounts of every type; its upgrade authority can redeploy at any time, so clients must length-check before decoding and halt on mismatch rather than read shifted fields.",

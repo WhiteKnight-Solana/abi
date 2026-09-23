@@ -15,7 +15,7 @@ test('every artifact hash in the manifest matches the bytes on disk', () => {
   const names = Object.keys(manifest.artifacts);
   assert.deepEqual(
     names.sort(),
-    ['addresses.json', 'constants.json', 'idl/whiteknight.json'],
+    ['addresses.json', 'constants.json', 'fixtures/satstacker-onboard.json', 'idl/whiteknight.json'],
     'manifest must cover exactly the canonical artifacts',
   );
   for (const [rel, expected] of Object.entries(manifest.artifacts)) {

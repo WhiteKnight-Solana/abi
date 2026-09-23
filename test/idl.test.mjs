@@ -15,7 +15,7 @@ const constants = readJson('constants.json');
 const types = new Map((idl.types ?? []).map((t) => [t.name, t]));
 
 test('every instruction discriminator is sha256("global:<name>")[0..8]', () => {
-  assert.ok(idl.instructions.length >= 23, `only ${idl.instructions.length} instructions`);
+  assert.ok(idl.instructions.length >= 27, `only ${idl.instructions.length} instructions`);
   for (const ix of idl.instructions) {
     assert.deepEqual(
       ix.discriminator,
@@ -267,4 +267,15 @@ test('the sixth account is what makes HOLD_SATS enforceable, and the IDL agrees 
     fields.some((f) => f.name === 'user_flags'),
     'Deployer no longer carries user_flags — HOLD_SATS could not be enforced',
   );
+});
+
+test('sol_sweep_done is derived at byte 497, carved from the front of the reserve', () => {
+  const fields = types.get('WkConfig').type.fields;
+  const idx = fields.findIndex((f) => f.name === 'sol_sweep_done');
+  assert.ok(idx > 0, 'WkConfig has no sol_sweep_done');
+  const derived = 8 + fields.slice(0, idx).reduce((n, f) => n + idlTypeSize(f.type, types), 0);
+  assert.equal(derived, 497, `IDL puts sol_sweep_done at byte ${derived}`);
+  assert.equal(fields[idx].type, 'u8');
+  assert.equal(fields[idx + 1].name, 'reserved', 'a carve comes off the FRONT of the reserve');
+  assert.equal(497 + 1 + constants.whiteknight.reserveWidths.WkConfig, constants.whiteknight.accountLens.WkConfig);
 });

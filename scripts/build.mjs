@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const check = process.argv.includes('--check');
 
-const ARTIFACTS = ['idl/whiteknight.json', 'addresses.json', 'constants.json'];
+const ARTIFACTS = ['idl/whiteknight.json', 'addresses.json', 'constants.json', 'fixtures/satstacker-onboard.json'];
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 const read = (rel) => readFileSync(join(root, rel));
