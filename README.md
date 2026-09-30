@@ -5,8 +5,9 @@ The canonical, versioned interface of the WhiteKnight program — an autominer f
 source of truth for *what the program looks like on the wire*: its IDL, its addresses, and the
 byte-exact layout facts an IDL cannot carry.
 
-> **Status: this commit describes the sub-miner SOL release** (owner `withdraw_sol`, the one-time
-> sub-miner SOL sweep, `close_shard`'s RUSH leg, the 26-account settle). The program id is
+> **Status: this commit describes the fee-bucket release** (the platform's revenue in one
+> FeeBucket account, paid out only by the admin's `pay_fee_expense` and `distribute_fees`; our own
+> operator's fee swept in with the platform fee), on top of the sub-miner SOL release. The program id is
 > **`WKhLkiPw8dSMoV1n81Mxyo61Eu3rH9CKtQTnLjGv4BS`**, published in `addresses.json` and
 > test-pinned. Verify it yourself rather than trusting this file:
 >
@@ -21,7 +22,7 @@ byte-exact layout facts an IDL cannot carry.
 > the deployed code goes*, and the deployed code can be changed by that key. A move to a
 > multisig is planned before meaningful TVL; until the on-chain authority says a multisig,
 > assume a single key. The release bytecode this commit describes is sha256
-> `fd3db487966f6211ce015cd887855d96cbfa5ed0fe3b1a79b45097185da25cd6` over its 699,992-byte release prefix, also published as
+> `a0f876e02c35fa47f6c77754cd554c2cb21139bd532cc06f3e9541bbab900259` over its 790,160-byte release prefix, also published as
 > `constants.whiteknight.wkBytecode` (`solana program dump` pads with zeros to the allocated
 > length: truncate before hashing).
 
@@ -29,9 +30,9 @@ byte-exact layout facts an IDL cannot carry.
 
 | Artifact | Contents |
 | --- | --- |
-| `idl/whiteknight.json` | The Anchor IDL exactly as `anchor build` produced it: 27 instructions, 3 accounts, 27 events, 42 error codes, all discriminators |
+| `idl/whiteknight.json` | The Anchor IDL exactly as `anchor build` produced it: 31 instructions, 4 accounts, 30 events, 46 error codes, all discriminators |
 | `addresses.json` | Per-cluster addresses: the WhiteKnight program, the Sat Rush program, USDC/cbBTC mints, token programs. A `null` means "not on that cluster"; the `pending` list names every null so absence is machine-checked |
-| `constants.json` | What the IDL cannot express: account lengths (`WkConfig` 753, `Manager` 331, `Deployer` 443; these double as `getProgramAccounts` dataSize filters), the launch reserves (`WkConfig` has carved `sol_sweep_done` at byte 497, leaving 255), PDA seed recipes for both programs, the param/flag tables, the per-user remaining-account strides, the release bytecode (`wkBytecode`), the accounts a sub-miner's first deploy pays rent for (`subMinerDeployRentBytes`), and every Sat Rush account size |
+| `constants.json` | What the IDL cannot express: account lengths (`WkConfig` 753, `Manager` 331, `Deployer` 443, `FeeBucket` 303; these double as `getProgramAccounts` dataSize filters), the launch reserves (`WkConfig` has carved `sol_sweep_done` at byte 497, leaving 255), PDA seed recipes for both programs, the param/flag tables, the per-user remaining-account strides, the release bytecode (`wkBytecode`), the accounts a sub-miner's first deploy pays rent for (`subMinerDeployRentBytes`), and every Sat Rush account size |
 | `fixtures/satstacker-onboard.json` | A byte copy of the program's onboarding fixture: the settings struct the program is proven to accept, for client encoders to test against |
 | `MANIFEST.json` | sha256 of each artifact + the program-source commit they were exported from |
 

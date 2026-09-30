@@ -15,7 +15,7 @@ const constants = readJson('constants.json');
 const types = new Map((idl.types ?? []).map((t) => [t.name, t]));
 
 test('every instruction discriminator is sha256("global:<name>")[0..8]', () => {
-  assert.ok(idl.instructions.length >= 27, `only ${idl.instructions.length} instructions`);
+  assert.ok(idl.instructions.length >= 31, `only ${idl.instructions.length} instructions`);
   for (const ix of idl.instructions) {
     assert.deepEqual(
       ix.discriminator,
@@ -28,7 +28,7 @@ test('every instruction discriminator is sha256("global:<name>")[0..8]', () => {
 test('every account discriminator is sha256("account:<Name>")[0..8]', () => {
   assert.deepEqual(
     idl.accounts.map((a) => a.name).sort(),
-    ['Deployer', 'Manager', 'WkConfig'],
+    ['Deployer', 'FeeBucket', 'Manager', 'WkConfig'],
   );
   for (const a of idl.accounts) {
     assert.deepEqual(a.discriminator, anchorDiscriminator('account', a.name), `account ${a.name}`);
@@ -52,7 +52,7 @@ test('account lengths derived from the IDL match constants.json exactly', () => 
   }
   // The three lengths this repo publishes are load-bearing as dataSize filters; pin the
   // current values so a program-side change is a conscious edit here, not a silent one.
-  assert.deepEqual(lens, { WkConfig: 753, Manager: 331, Deployer: 443 });
+  assert.deepEqual(lens, { WkConfig: 753, Manager: 331, Deployer: 443, FeeBucket: 303 });
 });
 
 test('each account carries its launch reserve at the declared width', () => {

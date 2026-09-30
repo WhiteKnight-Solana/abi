@@ -39,6 +39,6 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@whiteknight-solana/whiteknight": "github:WhiteKnight-Solana/whiteknight#c334d8dd47f71c63ce5fdfe6ceb3d98699b58f85"
+    "@whiteknight-solana/whiteknight": "github:WhiteKnight-Solana/whiteknight#c419b551e69c1798599461906691bd5cabd8307b"
   }
 }

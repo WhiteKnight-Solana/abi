@@ -78,7 +78,7 @@ test('the sub-miner SOL errors are appended after DuplicateAuthId and nothing wa
   const at = (i) => [errs[i].code, errs[i].name];
   assert.deepEqual(at(34), [6034, 'DuplicateAuthId']);
   assert.deepEqual(at(38), [6038, 'SubMinerHoldsRush']);
-  assert.deepEqual([errs.at(-1).code, errs.at(-1).name], [6041, 'NotSweepAuthority']);
+  assert.deepEqual(at(41), [6041, 'NotSweepAuthority']);
   // Codes are 6000 + declaration index, dense: a deletion anywhere would shift the tail.
   errs.forEach((e, i) => assert.equal(e.code, 6000 + i, `${e.name} renumbered`));
 });
@@ -295,4 +295,109 @@ test('the release bytecode and the sub-miner rent accounts are published', () =>
     constants.satrush.sizes.PublicDeployment,
     constants.satrush.sizes.Miner,
   ]);
+});
+
+// =====================================================================================
+// The fee bucket: all of the platform's revenue in one account no hot key can move, and the
+// only two ways out, both admin-signed. The recipients' accounts are unchecked on purpose (one
+// wallet may fill several slots), so their order and flags are the whole interface.
+// =====================================================================================
+
+test('the fee bucket errors are appended after NotSweepAuthority and nothing was renumbered', () => {
+  const errs = idl.errors;
+  assert.deepEqual(errs.slice(41).map((e) => [e.code, e.name]), [
+    [6041, 'NotSweepAuthority'],
+    [6042, 'SplitNotWhole'],
+    [6043, 'NothingToDistribute'],
+    [6044, 'RentToBucketRefused'],
+    [6045, 'FeeBucketAsRecipient'],
+  ]);
+});
+
+test('the FeeBucket account: its fields in order, its seed and its reserve', () => {
+  assert.deepEqual(types.get('FeeBucket').type.fields.map((f) => [f.name, f.type]), [
+    ['recipients', { array: ['pubkey', 3] }],
+    ['split_bps', { array: ['u16', 3] }],
+    ['expense_wallet', 'pubkey'],
+    ['distributed', { array: ['u64', 3] }],
+    ['expenses', 'u64'],
+    ['bump', 'u8'],
+    ['reserved', { array: ['u8', 128] }],
+  ]);
+  assert.equal(8 + idlTypeSize({ defined: { name: 'FeeBucket' } }, types), 303);
+  assert.ok(idl.accounts.some((a) => a.name === 'FeeBucket'), 'FeeBucket is a program account');
+  assert.deepEqual(wk.seeds.feeBucket, [{ kind: 'literal', value: 'fee-bucket' }]);
+});
+
+test('init_fee_bucket and set_fee_split: admin-signed, the same three settings', () => {
+  const settings = [
+    { name: 'recipients', type: { array: ['pubkey', 3] } },
+    { name: 'split_bps', type: { array: ['u16', 3] } },
+    { name: 'expense_wallet', type: 'pubkey' },
+  ];
+  for (const name of ['init_fee_bucket', 'set_fee_split']) {
+    assert.deepEqual(ix(name).discriminator, anchorDiscriminator('global', name));
+    assert.deepEqual(ix(name).args, settings, `${name} args`);
+  }
+  assert.deepEqual(shape('init_fee_bucket'), [
+    ['admin', true, true],
+    ['config', false, false],
+    ['fee_bucket', true, false],
+    ['usd_mint', false, false],
+    ['bucket_usd_ata', true, false],
+    ['token_program', false, false],
+    ['associated_token_program', false, false],
+    ['system_program', false, false],
+  ]);
+  assert.deepEqual(shape('set_fee_split'), [
+    ['admin', false, true],
+    ['config', false, false],
+    ['fee_bucket', true, false],
+  ]);
+});
+
+test('pay_fee_expense and distribute_fees: admin-signed, every destination writable', () => {
+  assert.deepEqual(ix('pay_fee_expense').args, [{ name: 'amount', type: 'u64' }]);
+  assert.deepEqual(shape('pay_fee_expense'), [
+    ['admin', false, true],
+    ['config', false, false],
+    ['fee_bucket', true, false],
+    ['usd_mint', false, false],
+    ['bucket_usd_ata', true, false],
+    ['expense_usd_ata', true, false],
+    ['token_program', false, false],
+  ]);
+  assert.deepEqual(ix('distribute_fees').args, []);
+  assert.deepEqual(shape('distribute_fees'), [
+    ['admin', false, true],
+    ['config', false, false],
+    ['fee_bucket', true, false],
+    ['usd_mint', false, false],
+    ['bucket_usd_ata', true, false],
+    ['recipient_0_usd_ata', true, false],
+    ['recipient_1_usd_ata', true, false],
+    ['recipient_2_usd_ata', true, false],
+    ['token_program', false, false],
+  ]);
+});
+
+test('the fee bucket events carry the published fields', () => {
+  const fields = (name) => types.get(name).type.fields.map((f) => [f.name, f.type]);
+  assert.deepEqual(fields('WkFeeSplitSet'), [
+    ['recipients', { array: ['pubkey', 3] }],
+    ['split_bps', { array: ['u16', 3] }],
+    ['expense_wallet', 'pubkey'],
+  ]);
+  assert.deepEqual(fields('WkFeeExpensePaid'), [
+    ['amount', 'u64'], ['expense_wallet', 'pubkey'], ['remaining', 'u64'],
+  ]);
+  assert.deepEqual(fields('WkFeesDistributed'), [
+    ['total', 'u64'],
+    ['shares', { array: ['u64', 3] }],
+    ['recipients', { array: ['pubkey', 3] }],
+    ['remaining', 'u64'],
+  ]);
+  for (const name of ['WkFeeSplitSet', 'WkFeeExpensePaid', 'WkFeesDistributed']) {
+    assert.ok(idl.events.some((e) => e.name === name), `${name} is not an event`);
+  }
 });

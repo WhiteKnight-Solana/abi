@@ -6,13 +6,15 @@ export default {
     "accountLens": {
       "WkConfig": 753,
       "Manager": 331,
-      "Deployer": 443
+      "Deployer": 443,
+      "FeeBucket": 303
     },
     "reserveWidths": {
-      "_comment": "The launch reserve: zero bytes appended pre-deploy that future fields are carved from, front-first, so accountLens never move. Deployer has had 26 bytes carved (btc_share_bps u16 + epoch_units_bought u64 + btc_units_bought u64 + user_flags u64). WkConfig has had 1 byte carved (sol_sweep_done u8 at byte 497).",
+      "_comment": "The launch reserve: zero bytes appended pre-deploy that future fields are carved from, front-first, so accountLens never move. Deployer has had 26 bytes carved (btc_share_bps u16 + epoch_units_bought u64 + btc_units_bought u64 + user_flags u64). WkConfig has had 1 byte carved (sol_sweep_done u8 at byte 497). FeeBucket launched with a 128-byte reserve.",
       "WkConfig": 255,
       "Manager": 256,
-      "Deployer": 230
+      "Deployer": 230,
+      "FeeBucket": 128
     },
     "paramCount": 32,
     "deployAuthorityOffset": 40,
@@ -167,6 +169,12 @@ export default {
           "kind": "u64le",
           "name": "authId"
         }
+      ],
+      "feeBucket": [
+        {
+          "kind": "literal",
+          "value": "fee-bucket"
+        }
       ]
     },
     "reservedUnusedParams": {
@@ -221,8 +229,8 @@ export default {
       "deployerFieldOffset": 107
     },
     "wkBytecode": {
-      "sha256": "fd3db487966f6211ce015cd887855d96cbfa5ed0fe3b1a79b45097185da25cd6",
-      "bytes": 699992
+      "sha256": "a0f876e02c35fa47f6c77754cd554c2cb21139bd532cc06f3e9541bbab900259",
+      "bytes": 790160
     },
     "subMinerDeployRentBytes": [
       136,
