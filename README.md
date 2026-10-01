@@ -22,7 +22,7 @@ byte-exact layout facts an IDL cannot carry.
 > the deployed code goes*, and the deployed code can be changed by that key. A move to a
 > multisig is planned before meaningful TVL; until the on-chain authority says a multisig,
 > assume a single key. The release bytecode this commit describes is sha256
-> `a0f876e02c35fa47f6c77754cd554c2cb21139bd532cc06f3e9541bbab900259` over its 790,160-byte release prefix, also published as
+> `666b692367eca4f06bb93bc6d558c85a46c48e3009527e188e65ef9c16155521` over its 790,000-byte release prefix, also published as
 > `constants.whiteknight.wkBytecode` (`solana program dump` pads with zeros to the allocated
 > length: truncate before hashing).
 

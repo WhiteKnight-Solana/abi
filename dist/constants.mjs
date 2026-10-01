@@ -229,8 +229,8 @@ export default {
       "deployerFieldOffset": 107
     },
     "wkBytecode": {
-      "sha256": "a0f876e02c35fa47f6c77754cd554c2cb21139bd532cc06f3e9541bbab900259",
-      "bytes": 790160
+      "sha256": "666b692367eca4f06bb93bc6d558c85a46c48e3009527e188e65ef9c16155521",
+      "bytes": 790000
     },
     "subMinerDeployRentBytes": [
       136,
